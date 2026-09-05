@@ -20,7 +20,8 @@ import { adminRoutes } from './admin.js'
 import { uploadRoutes } from './uploads.js'
 
 /**
- * Every API module (spec §41 path list) registered under /api/v1.
+ * Every API module (spec §41 path list) registered under /api.
+ * The Mini App + Admin panel call the same-origin prefix `/api` (dev: Vite proxy).
  * Swagger picks these up automatically (see app.ts).
  */
 export async function registerRoutes(app: FastifyInstance) {

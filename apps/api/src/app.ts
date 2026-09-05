@@ -11,6 +11,7 @@ import { corsOrigins, getEnv } from './env.js'
 import { authPlugin } from './plugins/auth.js'
 import { errorPlugin } from './plugins/errors.js'
 import { storagePlugin, UPLOADS_ROOT } from './plugins/storage.js'
+import { uiPlugin } from './plugins/ui.js'
 import { registerRoutes } from './routes/index.js'
 
 /** Build the Fastify application (testable via app.inject). */
@@ -65,7 +66,11 @@ export function buildApp(opts: { logger?: boolean } = {}): FastifyInstance {
 
   app.get('/health', async () => ({ status: 'ok', app: env.APP_NAME, time: new Date().toISOString() }))
 
-  void app.register(registerRoutes, { prefix: '/api/v1' })
+  void app.register(registerRoutes, { prefix: '/api' })
+
+  // Production single-origin UI server (/ → Mini App, /admin → Admin panel).
+  // Inert when the dist folders don't exist (dev / unit tests).
+  void app.register(uiPlugin)
 
   return app
 }

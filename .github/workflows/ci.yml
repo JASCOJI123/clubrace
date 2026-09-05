@@ -1,0 +1,40 @@
+# DRIVER HUB — CI (M8): lint, typecheck, unit tests, build.
+# Unit tests and builds run WITHOUT a database (honest local verification).
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: lint · typecheck · test · build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npm run gen
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests (no DB)
+        run: npm run test:unit
+
+      - name: Build (api, bot, worker, web, admin, packages)
+        run: npm run build

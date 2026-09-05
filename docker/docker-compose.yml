@@ -1,0 +1,44 @@
+# DRIVER HUB — local infrastructure (Postgres + Redis).
+# Start: docker compose -f docker/docker-compose.yml up -d
+# Stop:  docker compose -f docker/docker-compose.yml down
+#
+# Matches the defaults in .env.example:
+#   DATABASE_URL=postgresql://driverhub:driverhub@localhost:5432/driverhub?schema=public
+#   REDIS_URL=redis://localhost:6379
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: driverhub-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: driverhub
+      POSTGRES_PASSWORD: driverhub
+      POSTGRES_DB: driverhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - driverhub-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U driverhub -d driverhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: driverhub-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - driverhub-redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  driverhub-pgdata:
+  driverhub-redisdata:
