@@ -21,6 +21,9 @@ const envSchema = z.object({
 
   TELEGRAM_BOT_TOKEN: z.string().optional(),
   TELEGRAM_WEBAPP_URL: z.string().default('https://driverhub.example.com'),
+  // Optional production webhook for the bot (otherwise it long-polls).
+  WEBHOOK_URL: z.string().optional(),
+  WEBHOOK_SECRET: z.string().optional(),
 
   JWT_SECRET: z.string().optional(),
   JWT_EXPIRES_IN: z.string().default('7d'),

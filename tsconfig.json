@@ -8,6 +8,7 @@
     { "path": "./packages/types" },
     { "path": "./packages/validation" },
     { "path": "./packages/ui" },
-    { "path": "./apps/api" }
+    { "path": "./apps/api" },
+    { "path": "./apps/bot" }
   ]
 }
