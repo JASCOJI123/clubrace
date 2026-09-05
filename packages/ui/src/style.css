@@ -1,0 +1,19 @@
+/* DRIVER HUB — token CSS variables (consumed by the web Tailwind theme). */
+:root {
+  --dh-bg: #0b0f1a;
+  --dh-surface: #141b2c;
+  --dh-surface-2: #1b2438;
+  --dh-surface-3: #232e46;
+  --dh-border: rgba(255, 255, 255, 0.07);
+  --dh-border-strong: rgba(255, 255, 255, 0.14);
+  --dh-text: #f4f6fb;
+  --dh-text-secondary: #9aa4b8;
+  --dh-text-muted: #6b7690;
+  --dh-accent: #2bd9a3;
+  --dh-accent-strong: #16c68c;
+  --dh-accent-2: #7c6cff;
+  --dh-accent-2-strong: #6a59f5;
+  --dh-info: #38bdf8;
+  --dh-warning: #ffb020;
+  --dh-danger: #ff5d6c;
+}

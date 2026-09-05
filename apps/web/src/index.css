@@ -1,0 +1,69 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Design tokens are owned by @driverhub/ui (style.css) — this mirrors a few
+     for Tailwind utility classes to resolve before the kit CSS is hydrated. */
+  --dh-bg: #0b0f1a;
+  --dh-surface: #141b2c;
+  --dh-surface-2: #1b2438;
+  --dh-surface-3: #232e46;
+  --dh-border: rgba(255, 255, 255, 0.07);
+  --dh-border-strong: rgba(255, 255, 255, 0.14);
+  --dh-text: #f4f6fb;
+  --dh-text-secondary: #9aa4b8;
+  --dh-text-muted: #6b7690;
+  --dh-accent: #2bd9a3;
+  --dh-accent-strong: #16c68c;
+  --dh-accent-2: #7c6cff;
+  --dh-accent-2-strong: #6a59f5;
+  --dh-info: #38bdf8;
+  --dh-warning: #ffb020;
+  --dh-danger: #ff5d6c;
+  --dh-success-bg: rgba(43, 217, 163, 0.12);
+  --dh-warning-bg: rgba(255, 176, 32, 0.14);
+  --dh-danger-bg: rgba(255, 93, 108, 0.12);
+  --dh-info-bg: rgba(56, 189, 248, 0.12);
+  --dh-accent2-bg: rgba(124, 108, 255, 0.14);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--dh-bg);
+  color: var(--dh-text);
+  font-family: 'Inter', -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+
+/* scrollbar (thin, subtle) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--dh-surface-3);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
