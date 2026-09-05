@@ -113,9 +113,9 @@ export function Profile() {
 function formatLevel(level: string): string {
   const map: Record<string, string> = {
     ROOKIE: '🟢 Yangi boshlovchi',
-    PROGRESSIVE: '🔵 O‘sayotgan haydovchi',
-    PROFESSIONAL: '🟣 Professional',
-    EXPERT: '🟠 Ekspert',
+    ACTIVE: '🔵 Faol',
+    PRO: '🟣 Professional',
+    ELITE: '🟠 Ekspert',
   }
   return map[level] ?? level
 }
