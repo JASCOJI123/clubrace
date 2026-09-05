@@ -1,0 +1,13 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/database" },
+    { "path": "./packages/config" },
+    { "path": "./packages/telegram" },
+    { "path": "./packages/ai" },
+    { "path": "./packages/types" },
+    { "path": "./packages/validation" },
+    { "path": "./packages/ui" },
+    { "path": "./apps/api" }
+  ]
+}

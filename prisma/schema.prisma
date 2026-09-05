@@ -1,0 +1,1161 @@
+// ===== DRIVER HUB — Prisma schema (PostgreSQL) =====
+// Follows spec §37 table list. Every important entity: id UUID, created_at, updated_at,
+// soft-deleted via deleted_at, audit via created_by/updated_by where appropriate.
+// Money is stored as integer UZS (so'm) — deterministic math (spec RULE 6).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================= ENUMS =================
+
+enum UserRole {
+  DRIVER
+  PARTNER
+  MODERATOR
+  ADMIN
+}
+
+enum DriverType {
+  TAXI
+  PRIVATE_DRIVER
+  DELIVERY
+  CARGO
+  OTHER
+}
+
+enum FuelType {
+  PETROL
+  DIESEL
+  GAS
+  ELECTRIC
+  HYBRID
+  OTHER
+}
+
+enum PrimaryGoal {
+  INCREASE_INCOME
+  REDUCE_EXPENSES
+  MAINTAIN_CAR
+  SAVE_MONEY
+  UNDERSTAND_PROFITABILITY
+}
+
+enum IncomePlatform {
+  YANDEX
+  UBER
+  INDRIVE
+  PRIVATE
+  DELIVERY
+  OTHER
+}
+
+enum ExpenseCategory {
+  FUEL
+  GAS
+  OIL
+  REPAIR
+  TIRES
+  PARKING
+  CAR_WASH
+  INSURANCE
+  TAX
+  LOAN
+  OTHER
+}
+
+enum MaintenanceType {
+  ENGINE_OIL
+  OIL_FILTER
+  AIR_FILTER
+  CABIN_FILTER
+  BRAKE_PADS
+  TIRES
+  BATTERY
+  TECHNICAL_INSPECTION
+  INSURANCE
+  OTHER
+}
+
+enum GoalStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  ARCHIVED
+}
+
+enum WorkSessionStatus {
+  ACTIVE
+  ENDED
+}
+
+enum DriverLevel {
+  ROOKIE
+  ACTIVE
+  PRO
+  ELITE
+}
+
+enum AchievementCategory {
+  STREAK
+  EARNING
+  VEHICLE
+  GOAL
+  CONSISTENCY
+  CHALLENGE
+  COMMUNITY
+}
+
+enum ChallengeMetric {
+  NET_PROFIT
+  WORK_CONSISTENCY
+  EXPENSE_DISCIPLINE
+  GOAL_PROGRESS
+  ACTIVITY
+}
+
+enum ChallengeStatus {
+  DRAFT
+  ACTIVE
+  FINISHED
+}
+
+enum PartnerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+enum OfferCategory {
+  FUEL
+  SERVICE
+  TIRES
+  OIL
+  CAR_WASH
+  INSURANCE
+  AUTO_DEALERS
+  OTHER
+}
+
+enum OfferStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+  EXPIRED
+}
+
+enum ClaimStatus {
+  CLAIMED
+  REDEEMED
+  EXPIRED
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  CLOSED
+}
+
+enum MarketplaceCategorySlug {
+  CARS
+  TIRES
+  PARTS
+  ACCESSORIES
+  OIL
+  TOOLS
+  ELECTRONICS
+  OTHER
+}
+
+enum ListingCondition {
+  NEW
+  LIKE_NEW
+  USED
+  SPARE_PARTS
+}
+
+enum MarketplaceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REMOVED
+  SOLD
+}
+
+enum RouteStatus {
+  PLANNED
+  ACTIVE
+  DONE
+  CANCELLED
+}
+
+enum RouteRequestStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+}
+
+enum ReferralStatus {
+  PENDING
+  ACTIVE
+  REWARDED
+}
+
+enum RewardType {
+  PRO_DAYS
+  BADGE
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+  PENDING
+}
+
+enum PaymentProvider {
+  LOCAL
+  TELEGRAM_STARS
+  FUTURE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum NotificationType {
+  GOAL_REMINDER
+  GOAL_ACHIEVEMENT
+  MAINTENANCE_REMINDER
+  WEEKLY_REPORT
+  MONTHLY_REPORT
+  CHALLENGE_START
+  CHALLENGE_ENDING
+  CLUB_OFFER
+  MARKETPLACE_MESSAGE
+  ROUTE_REQUEST
+  SUBSCRIPTION_EXPIRATION
+  REFERRAL_REWARD
+  ANNOUNCEMENT
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+enum ReportReason {
+  SCAM
+  WRONG_INFORMATION
+  ILLEGAL_CONTENT
+  SPAM
+  OFFENSIVE
+  OTHER
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  ACTION_TAKEN
+  DISMISSED
+}
+
+enum ReportTargetType {
+  MARKETPLACE_LISTING
+  ROUTE
+  PARTNER_OFFER
+  USER
+}
+
+enum AuditAction {
+  ADMIN_LOGIN
+  USER_SUSPEND
+  USER_BAN
+  USER_RESTORE
+  OFFER_APPROVE
+  OFFER_REJECT
+  LISTING_APPROVE
+  LISTING_REMOVE
+  ROUTE_REMOVE
+  PAYMENT_VERIFIED
+  SUBSCRIPTION_CHANGED
+  SCORE_CHANGED
+  BROADCAST_SENT
+  SETTINGS_CHANGED
+}
+
+// ================= AUTH / IDENTITY =================
+
+model User {
+  id                 String    @id @default(uuid()) @db.Uuid
+  role               UserRole  @default(DRIVER)
+  telegramId         BigInt?   @unique
+  telegramUsername   String?
+  telegramFirstName  String?
+  telegramLastName   String?
+  telegramPhotoUrl   String?
+  name               String?
+  phone              String?
+  avatarUrl          String?
+  driverType         DriverType?
+  languageCode       String    @default("uz")
+  onboardingStep     Int       @default(0)
+  onboardingDone     Boolean   @default(false)
+  isSuspended        Boolean   @default(false)
+  isBanned           Boolean   @default(false)
+  isDemo             Boolean   @default(false)
+  referralCode       String?   @unique
+  referredByTgId     BigInt?
+  settings           Json?
+  deletedAt          DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  driver             Driver?
+  partner            Partner?
+  adminUser          AdminUser?
+  cars               Car[]
+  maintenance        MaintenanceRecord[]
+  incomeRecords      IncomeRecord[]
+  expenseRecords     ExpenseRecord[]
+  workSessions       WorkSession[]
+  goals              Goal[]
+  driverScore        DriverScore?
+  scoreEvents        DriverScoreEvent[]
+  achievements       DriverAchievement[]
+  challengeEntries   ChallengeParticipant[]
+  offers             MarketplaceListing[]
+  favoriteListings   MarketplaceFavorite[]
+  routes             Route[]
+  routeRequests      RouteRequest[]
+  routePassengers    RoutePassenger[]
+  levelHistory       DriverLevelRecord[]
+  notifications      Notification[]
+  notificationPref   NotificationPreference?
+  tickets            SupportTicket[]
+  reportsFiled       Report[]
+
+  // referrals (ready-to-wire; see packages:referrals)
+  referralsGiven     Referral[]          @relation("Referrer")
+  referralsReceived  Referral[]          @relation("Invitee")
+  subscriptions      Subscription[]
+  offerClaims        OfferClaim[]
+
+  @@index([role])
+  @@index([onboardingDone])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Driver {
+  id                String       @id @default(uuid()) @db.Uuid
+  userId            String       @unique @db.Uuid
+  driverType        DriverType?
+  incomeTargetMonth Int?
+  primaryGoal       PrimaryGoal?
+  level             DriverLevel  @default(ROOKIE)
+  xp                Int          @default(0)
+  privacy           Json? // {"leaderboard":true,"profile":true,"routes":true}
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  user              User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("drivers")
+}
+
+model AdminUser {
+  id           String    @id @default(uuid()) @db.Uuid
+  userId       String    @unique @db.Uuid
+  email        String    @unique
+  passwordHash String
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actions      AdminAction[]
+
+  @@map("admin_users")
+}
+
+// ================= VEHICLES =================
+
+model Car {
+  id            String               @id @default(uuid()) @db.Uuid
+  userId        String               @db.Uuid
+  isPrimary     Boolean              @default(true)
+  brand         String
+  model         String
+  year          Int?
+  plate         String?
+  vin           String?
+  fuelType      FuelType
+  mileageKms    Int                  @default(0)
+  photoUrl      String?
+  deletedAt     DateTime?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  documents     CarDocument[]
+  maintenance   MaintenanceRecord[]
+  expenses      ExpenseRecord[]
+  income        IncomeRecord[]
+  routes        Route[]
+
+  @@index([userId])
+  @@map("cars")
+}
+
+model CarDocument {
+  id          String    @id @default(uuid()) @db.Uuid
+  carId       String    @db.Uuid
+  type        String // TITLE, INSURANCE, TECH_INSPECTION, OTHER
+  fileUrl     String
+  expiryDate  DateTime?
+  createdAt   DateTime  @default(now())
+
+  car         Car       @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@map("car_documents")
+}
+
+model MaintenanceRecord {
+  id              String          @id @default(uuid()) @db.Uuid
+  userId          String          @db.Uuid
+  carId           String          @db.Uuid
+  serviceType     MaintenanceType
+  date            DateTime
+  mileageKms      Int
+  cost            Int
+  provider        String?
+  notes           String?
+  nextDueDate     DateTime?
+  nextDueMileage  Int?
+  deletedAt       DateTime?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car             Car             @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([userId, date])
+  @@index([carId])
+  @@index([nextDueDate])
+  @@map("maintenance_records")
+}
+
+// ================= FINANCE =================
+
+model IncomeRecord {
+  id            String          @id @default(uuid()) @db.Uuid
+  userId        String          @db.Uuid
+  carId         String?         @db.Uuid
+  amount        Int
+  date          DateTime
+  platform      IncomePlatform
+  tripCount     Int?
+  workSessionId String?
+  notes         String?
+  deletedAt     DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car           Car?            @relation(fields: [carId], references: [id], onDelete: SetNull)
+  workSession   WorkSession?    @relation(fields: [workSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([platform])
+  @@map("income_records")
+}
+
+model ExpenseRecord {
+  id            String          @id @default(uuid()) @db.Uuid
+  userId        String          @db.Uuid
+  carId         String?         @db.Uuid
+  category      ExpenseCategory
+  amount        Int
+  date          DateTime
+  receiptUrl    String?
+  workSessionId String?
+  notes         String?
+  deletedAt     DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  user          User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car           Car?            @relation(fields: [carId], references: [id], onDelete: SetNull)
+  workSession   WorkSession?    @relation(fields: [workSessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, date])
+  @@index([category, date])
+  @@map("expense_records")
+}
+
+model WorkSession {
+  id            String             @id @default(uuid()) @db.Uuid
+  userId        String             @db.Uuid
+  startedAt     DateTime
+  endedAt       DateTime?
+  status        WorkSessionStatus  @default(ACTIVE)
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  income        IncomeRecord[]
+  expenses      ExpenseRecord[]
+
+  @@index([userId, startedAt])
+  @@index([status])
+  @@map("work_sessions")
+}
+
+// ================= GOALS =================
+
+model Goal {
+  id             String       @id @default(uuid()) @db.Uuid
+  userId         String       @db.Uuid
+  title          String
+  targetAmount   Int
+  deadline       DateTime?
+  status         GoalStatus   @default(ACTIVE)
+  emoji          String?      @default("🎯")
+  deletedAt      DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions   GoalTransaction[]
+
+  @@index([userId, status])
+  @@map("goals")
+}
+
+model GoalTransaction {
+  id        String   @id @default(uuid()) @db.Uuid
+  goalId    String   @db.Uuid
+  amount    Int
+  date      DateTime @default(now())
+  note      String?
+
+  goal      Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([goalId, date])
+  @@map("goal_transactions")
+}
+
+// ================= DRIVER SCORE / LEVELS / ACHIEVEMENTS =================
+
+model DriverScore {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @unique @db.Uuid
+  score        Int
+  // components 0-100 each; weights documented in packages/ai
+  components   Json
+  computedAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("driver_scores")
+}
+
+model DriverScoreEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  delta     Int
+  component String
+  reason    String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("driver_score_events")
+}
+
+model DriverLevelRecord {
+  id        String      @id @default(uuid()) @db.Uuid
+  userId    String      @db.Uuid
+  level     DriverLevel
+  xpAtThatTime Int
+  reason    String?
+  createdAt DateTime    @default(now())
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("driver_levels")
+}
+
+model Achievement {
+  id          String              @id @default(uuid()) @db.Uuid
+  code        String              @unique
+  title       String
+  description String
+  emoji       String              @default("🏆")
+  xpReward    Int                 @default(0)
+  category    AchievementCategory
+  createdAt   DateTime            @default(now())
+
+  drivers     DriverAchievement[]
+
+  @@map("achievements")
+}
+
+model DriverAchievement {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @db.Uuid
+  achievementId String       @db.Uuid
+  earnedAt      DateTime     @default(now())
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement  @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("driver_achievements")
+}
+
+// ================= CHALLENGES =================
+
+model Challenge {
+  id          String             @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  metric      ChallengeMetric
+  startDate   DateTime
+  endDate     DateTime
+  reward      String?
+  status      ChallengeStatus    @default(DRAFT)
+  createdBy   String?            @db.Uuid
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  participants ChallengeParticipant[]
+
+  @@index([status, startDate])
+  @@map("challenges")
+}
+
+model ChallengeParticipant {
+  id                String              @id @default(uuid()) @db.Uuid
+  challengeId       String              @db.Uuid
+  userId            String              @db.Uuid
+  status            String              @default("JOINED")
+  resultValue       Float?
+  rank              Int?
+  optedOutLeaderboard Boolean            @default(false)
+  joinedAt          DateTime            @default(now())
+
+  challenge         Challenge           @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user              User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+  @@map("challenge_participants")
+}
+
+// ================= PARTNERS / CLUB =================
+
+model Partner {
+  id           String        @id @default(uuid()) @db.Uuid
+  userId       String        @unique @db.Uuid
+  businessName String
+  logoUrl      String?
+  category     String?
+  description  String?
+  phone        String?
+  address      String?
+  lat          Float?
+  lng          Float?
+  workingHours Json?
+  socialLinks  Json?
+  status       PartnerStatus @default(PENDING)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  offers       PartnerOffer[]
+  leads        PartnerLead[]
+
+  @@map("partners")
+}
+
+model PartnerOffer {
+  id            String        @id @default(uuid()) @db.Uuid
+  partnerId     String        @db.Uuid
+  title         String
+  description   String?
+  discountText  String?
+  category      OfferCategory @default(OTHER)
+  imageUrl      String?
+  validUntil    DateTime?
+  status        OfferStatus   @default(PENDING)
+  featured      Boolean       @default(false)
+  views         Int           @default(0)
+  clicks        Int           @default(0)
+  deletedAt     DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  partner       Partner       @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  claims        OfferClaim[]
+  viewEvents    OfferView[]
+
+  @@index([partnerId])
+  @@index([status])
+  @@map("partner_offers")
+}
+
+model OfferView {
+  id        String   @id @default(uuid()) @db.Uuid
+  offerId   String   @db.Uuid
+  userId    String?  @db.Uuid
+  createdAt DateTime @default(now())
+
+  offer     PartnerOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+
+  @@map("offer_views")
+}
+
+model OfferClaim {
+  id        String      @id @default(uuid()) @db.Uuid
+  offerId   String      @db.Uuid
+  userId    String      @db.Uuid
+  couponCode String     @unique
+  status    ClaimStatus @default(CLAIMED)
+  claimedAt DateTime    @default(now())
+
+  offer     PartnerOffer @relation(fields: [offerId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  redemption OfferRedemption?
+
+  @@unique([offerId, userId])
+  @@map("offer_claims")
+}
+
+model OfferRedemption {
+  id         String    @id @default(uuid()) @db.Uuid
+  claimId    String    @unique @db.Uuid
+  redeemedAt DateTime  @default(now())
+  note       String?
+
+  claim      OfferClaim @relation(fields: [claimId], references: [id], onDelete: Cascade)
+
+  @@map("offer_redemptions")
+}
+
+model PartnerLead {
+  id         String     @id @default(uuid()) @db.Uuid
+  partnerId  String     @db.Uuid
+  offerId    String?    @db.Uuid
+  userId     String?    @db.Uuid
+  name       String?
+  phone      String?
+  source     String     @default("offer")
+  status     LeadStatus @default(NEW)
+  createdAt  DateTime   @default(now())
+
+  partner    Partner    @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([partnerId, createdAt])
+  @@map("partner_leads")
+}
+
+// ================= MARKETPLACE =================
+
+model MarketplaceCategory {
+  id       String                  @id @default(uuid()) @db.Uuid
+  name     String
+  slug     MarketplaceCategorySlug @unique
+  emoji    String                  @default("🛒")
+  order    Int                     @default(0)
+
+  listings MarketplaceListing[]
+
+  @@map("marketplace_categories")
+}
+
+model MarketplaceListing {
+  id            String             @id @default(uuid()) @db.Uuid
+  userId        String             @db.Uuid
+  categoryId    String             @db.Uuid
+  title         String
+  description   String?
+  price         Int
+  condition     ListingCondition
+  location      String?
+  contactPhone  String?
+  status        MarketplaceStatus  @default(PENDING)
+  moderationNote String?
+  deletedAt     DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      MarketplaceCategory @relation(fields: [categoryId], references: [id])
+  images        MarketplaceImage[]
+  favoriteBy    MarketplaceFavorite[]
+  reports       MarketplaceReport[]
+
+  @@index([userId])
+  @@index([status, createdAt])
+  @@index([categoryId])
+  @@map("marketplace_listings")
+}
+
+model MarketplaceImage {
+  id        String            @id @default(uuid()) @db.Uuid
+  listingId String            @db.Uuid
+  url       String
+  order     Int               @default(0)
+
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("marketplace_images")
+}
+
+model MarketplaceFavorite {
+  id        String            @id @default(uuid()) @db.Uuid
+  listingId String            @db.Uuid
+  userId    String            @db.Uuid
+  createdAt DateTime          @default(now())
+
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([listingId, userId])
+  @@map("marketplace_favorites")
+}
+
+model MarketplaceReport {
+  id          String       @id @default(uuid()) @db.Uuid
+  listingId   String       @db.Uuid
+  reporterId  String       @db.Uuid
+  reason      ReportReason
+  description String?
+  status      ReportStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+
+  listing     MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@map("marketplace_reports")
+}
+
+// ================= ROUTE MARKETPLACE =================
+
+model Route {
+  id            String       @id @default(uuid()) @db.Uuid
+  userId        String       @db.Uuid
+  carId         String?      @db.Uuid
+  fromCity      String
+  toCity        String
+  date          DateTime
+  departureTime String?
+  seatsAvailable Int
+  price         Int?
+  description   String?
+  status        RouteStatus  @default(PLANNED)
+  deletedAt     DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car           Car?         @relation(fields: [carId], references: [id], onDelete: SetNull)
+  requests      RouteRequest[]
+  passengers    RoutePassenger[]
+  reviews       RouteReview[]
+
+  @@index([userId])
+  @@index([fromCity, toCity])
+  @@map("routes")
+}
+
+model RouteRequest {
+  id        String             @id @default(uuid()) @db.Uuid
+  routeId   String             @db.Uuid
+  userId    String             @db.Uuid
+  seats     Int                @default(1)
+  status    RouteRequestStatus @default(PENDING)
+  note      String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  route     Route              @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, userId])
+  @@map("route_requests")
+}
+
+model RoutePassenger {
+  id        String   @id @default(uuid()) @db.Uuid
+  routeId   String   @db.Uuid
+  userId    String   @db.Uuid
+  acceptedAt DateTime @default(now())
+
+  route     Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([routeId, userId])
+  @@map("route_passengers")
+}
+
+model RouteReview {
+  id             String   @id @default(uuid()) @db.Uuid
+  routeId        String   @db.Uuid
+  reviewerUserId String   @db.Uuid
+  reviewedUserId String   @db.Uuid
+  rating         Int
+  comment        String?
+  createdAt      DateTime @default(now())
+
+  route          Route    @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  @@map("route_reviews")
+}
+
+// ================= REFERRALS =================
+
+model Referral {
+  id             String          @id @default(uuid()) @db.Uuid
+  referrerId     String          @db.Uuid
+  inviteeId      String          @unique @db.Uuid
+  status         ReferralStatus  @default(PENDING)
+  createdAt      DateTime        @default(now())
+  rewardGrantedAt DateTime?
+
+  referrer       User            @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  invitee        User            @relation("Invitee", fields: [inviteeId], references: [id], onDelete: Cascade)
+  rewards        ReferralReward[]
+
+  @@index([referrerId, createdAt])
+  @@map("referrals")
+}
+
+model ReferralReward {
+  id          String     @id @default(uuid()) @db.Uuid
+  referralId  String     @unique @db.Uuid
+  rewardType  RewardType
+  value       String // "7 days PRO", badge code
+  status      String     @default("GRANTED")
+  grantedAt   DateTime   @default(now())
+
+  referral    Referral   @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  @@map("referral_rewards")
+}
+
+// ================= SUBSCRIPTION / PAYMENTS =================
+
+model Subscription {
+  id          String             @id @default(uuid()) @db.Uuid
+  userId      String             @db.Uuid
+  plan        SubscriptionPlan   @default(FREE)
+  status      SubscriptionStatus @default(PENDING)
+  startedAt   DateTime?
+  expiresAt   DateTime?
+  priceMonth  Int?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@map("subscriptions")
+}
+
+model Payment {
+  id            String          @id @default(uuid()) @db.Uuid
+  userId        String          @db.Uuid
+  provider      PaymentProvider
+  amount        Int
+  currency      String          @default("UZS")
+  status        PaymentStatus   @default(PENDING)
+  externalId    String?         @unique
+  verifiedAt    DateTime?
+  metadata      Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  events        PaymentEvent[]
+
+  @@index([userId, createdAt])
+  @@map("payments")
+}
+
+model PaymentEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  paymentId String   @db.Uuid
+  eventType String
+  data      Json?
+  createdAt DateTime @default(now())
+
+  payment   Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@map("payment_events")
+}
+
+// ================= NOTIFICATIONS =================
+
+model Notification {
+  id         String              @id @default(uuid()) @db.Uuid
+  userId     String              @db.Uuid
+  type       NotificationType
+  title      String
+  body       String?
+  isRead     Boolean             @default(false)
+  status     NotificationStatus  @default(PENDING)
+  data       Json?
+  sentAt     DateTime?
+  createdAt  DateTime            @default(now())
+
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@index([status])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @unique @db.Uuid
+  telegramEnabled  Boolean  @default(true)
+  quietHoursStart  Int?
+  quietHoursEnd    Int? // 24h minutes from 00:00
+  // category toggles stored as JSON: {"GOAL_REMINDER":true,...}
+  enabled          Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+// ================= SUPPORT =================
+
+model SupportTicket {
+  id          String          @id @default(uuid()) @db.Uuid
+  userId      String          @db.Uuid
+  subject     String
+  message     String
+  status      TicketStatus    @default(OPEN)
+  assigneeId  String?         @db.Uuid
+  respondedAt DateTime?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages    SupportMessage[]
+
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id         String        @id @default(uuid()) @db.Uuid
+  ticketId   String        @db.Uuid
+  authorId   String        @db.Uuid
+  authorRole UserRole
+  body       String
+  createdAt  DateTime      @default(now())
+
+  ticket     SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@map("support_messages")
+}
+
+// ================= REPORTS / MODERATION =================
+
+model Report {
+  id          String          @id @default(uuid()) @db.Uuid
+  reporterId  String          @db.Uuid
+  targetType  ReportTargetType
+  targetId    String          @db.Uuid // references the id of the target entity per targetType
+  reason      ReportReason
+  description String?
+  status      ReportStatus    @default(PENDING)
+  resolvedBy  String?         @db.Uuid
+  resolvedAt  DateTime?
+  createdAt   DateTime        @default(now())
+
+  reporter    User            @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+
+  @@index([status, createdAt])
+  @@map("reports")
+}
+
+// ================= ADMIN / AUDIT =================
+
+model AdminAction {
+  id          String      @id @default(uuid()) @db.Uuid
+  actorId     String      @db.Uuid
+  action      AuditAction
+  targetType  String?
+  targetId    String?
+  metadata    Json?
+  ip          String?
+  createdAt   DateTime    @default(now())
+
+  actor       AdminUser   @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("admin_actions")
+}
+
+model AuditLog {
+  id        String      @id @default(uuid()) @db.Uuid
+  actorId   String?     @db.Uuid
+  actorRole UserRole?
+  action    AuditAction
+  targetType String?
+  targetId  String?
+  metadata  Json?
+  ip        String?
+  createdAt DateTime    @default(now())
+  // Note: audit logs are never soft-deleted.
+
+  @@index([createdAt])
+  @@index([actorId])
+  @@map("audit_logs")
+}
+
+// ================= SYSTEM SETTINGS =================
+
+model SystemSetting {
+  key       String   @id
+  value     Json
+  updatedBy String?  @db.Uuid
+  updatedAt DateTime @updatedAt
+
+  @@map("system_settings")
+}
