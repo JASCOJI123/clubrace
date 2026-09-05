@@ -1,0 +1,106 @@
+name: driverhub
+
+# ============================================================================
+# DRIVER HUB — production stack (Oracle Always Free VM / any Docker host)
+#   Run from this directory:  docker compose up -d --build
+#   Secrets: docker/.env  (create from docker/.env.prod.example)
+#
+# One image (root Dockerfile) runs all three Node processes:
+#   api     → prisma migrate deploy + idempotent bootstrap + Fastify
+#             (serves Mini App at /, Admin at /admin, REST API at /api, uploads)
+#   bot     → Telegraf long-polling  (needs TELEGRAM_BOT_TOKEN)
+#   worker  → BullMQ (real Redis) + node-cron
+# Backed by Postgres 16 + Redis 7, fronted by a Cloudflare Tunnel for public HTTPS.
+# ============================================================================
+
+services:
+  # ---------------- Data ----------------
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: driverhub
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-driverhub}
+      POSTGRES_DB: driverhub
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U driverhub -d driverhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  # ---------------- App ----------------
+  api:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: >
+      sh -c "npx prisma migrate deploy
+             && npx tsx packages/database/src/bootstrap.ts
+             && node apps/api/dist/server.js"
+    env_file: .env
+    ports:
+      - "${API_PORT:-4000}:4000"
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  bot:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "apps/bot/dist/bot.js"]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  worker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "apps/worker/dist/index.js"]
+    env_file: .env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ---------------- Public HTTPS ----------------
+  # Cloudflare Tunnel — free public HTTPS without opening ports on the VM.
+  # Create a named tunnel in the Cloudflare dashboard, copy the token into
+  # docker/.env as CLOUDFLARE_TUNNEL_TOKEN.
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - api
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:

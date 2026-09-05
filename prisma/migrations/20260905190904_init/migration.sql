@@ -1,6 +1,3 @@
--- CreateSchema
-CREATE SCHEMA IF NOT EXISTS "public";
-
 -- CreateEnum
 CREATE TYPE "UserRole" AS ENUM ('DRIVER', 'PARTNER', 'MODERATOR', 'ADMIN');
 
@@ -229,7 +226,7 @@ CREATE TABLE "income_records" (
     "date" TIMESTAMP(3) NOT NULL,
     "platform" "IncomePlatform" NOT NULL,
     "tripCount" INTEGER,
-    "workSessionId" TEXT,
+    "workSessionId" UUID,
     "notes" TEXT,
     "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -247,7 +244,7 @@ CREATE TABLE "expense_records" (
     "amount" INTEGER NOT NULL,
     "date" TIMESTAMP(3) NOT NULL,
     "receiptUrl" TEXT,
-    "workSessionId" TEXT,
+    "workSessionId" UUID,
     "notes" TEXT,
     "deletedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -1106,4 +1103,3 @@ ALTER TABLE "reports" ADD CONSTRAINT "reports_reporterId_fkey" FOREIGN KEY ("rep
 
 -- AddForeignKey
 ALTER TABLE "admin_actions" ADD CONSTRAINT "admin_actions_actorId_fkey" FOREIGN KEY ("actorId") REFERENCES "admin_users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-

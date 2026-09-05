@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Button, Card, Spinner, Text, tokens } from '@driverhub/ui'
 import { authApi, setToken, getToken } from '../../lib/api'
 import { useAuth } from '../../stores/auth'
-import { captureInitData, isMock } from '../../lib/telegram'
+import { captureInitData, isMock, inTelegram, tg } from '../../lib/telegram'
 
 /**
  * Login gate. Precedence:
@@ -44,8 +44,11 @@ export function AuthGate() {
         return
       }
     }
-    // 3. browser dev shim
-    if (isMock() || !('Telegram' in window)) {
+    // 3. browser dev shim — also covers the case where telegram-web-app.js
+    //    was loaded from index.html (creating window.Telegram) but we are NOT
+    //    actually inside Telegram (no initData, no real user in initDataUnsafe).
+    const hasRealTelegramSession = inTelegram() && !!(tg().initDataUnsafe?.user?.id)
+    if (isMock() || !hasRealTelegramSession) {
       try {
         const res = await authApi.devLogin()
         setToken(res.token)

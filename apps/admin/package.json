@@ -12,11 +12,14 @@
   "dependencies": {
     "@driverhub/types": "*",
     "@driverhub/ui": "*",
+    "@fastify/jwt": "10.2.2",
+    "@fastify/static": "10.1.3",
+    "@fastify/swagger-ui": "6.1.1",
     "@tanstack/react-query": "^5.62.7",
     "clsx": "^2.1.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.28.0",
+    "react-router-dom": "^7.18.3",
     "recharts": "^2.15.0"
   },
   "devDependencies": {

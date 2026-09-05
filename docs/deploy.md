@@ -67,31 +67,34 @@ process serves the built SPAs itself:
 `apps/api/src/plugins/ui.ts` mounts the dist folders only when they exist, so the
 API still runs UI-less in dev/tests.
 
-### Render (blueprint included in `render.yaml`)
+### Free 24/7 — Docker on an Oracle Always Free VM (recommended)
+
+The full production stack (Postgres + Redis + api + bot + worker + Cloudflare
+Tunnel for HTTPS) is defined in `Dockerfile`, `docker/docker-compose.prod.yml`
+and `docker/.env.prod.example`. Follow the step-by-step runbook:
+
+📄 **[docs/deploy-oracle.md](deploy-oracle.md)** — Oracle signup, VM creation,
+`docker/setup-oracle.sh`, Cloudflare Tunnel, BotFather setup, verification.
+
+The `api` service runs `npx prisma migrate deploy` + an idempotent bootstrap
+(`packages/database/src/bootstrap.ts`, which creates the first admin and default
+settings **without** wiping data) on every boot.
+
+### Render (alternative — not truly 24/7)
+
+Render's free tier *scales to zero*: the bot's long-polling and the worker's cron
+are suspended on inactivity, so it is a demo/starting point rather than an
+always-on deployment.
 
 1. Push the repo to GitHub.
-2. Render → **New → Blueprint** → select the repo.
-3. It provisions two services (api web, worker) + Postgres. Fill the `sync: false`
-   env vars in the dashboard:
-   - `TELEGRAM_BOT_TOKEN` (from @BotFather) and `TELEGRAM_WEBAPP_URL` (the API
-     URL — the Mini App link in BotFather must point here, HTTPS).
-   - `JWT_SECRET` (auto-generated, override if you prefer), `ADMIN_PASSWORD`.
-   - Optional: `REDIS_URL` (Upstash/KeyDB) for durable queues, `AI_API_KEY`
-     (Anthropic) to enable natural-language chat. Without them the in-memory
-     queue fallback and the deterministic AI engine are used.
-4. Run migrations on the provisioned Postgres (one-off):
-   ```bash
-   # from a local shell with the Render DATABASE_URL:
-   npx prisma migrate deploy
-   ```
-   (or a small release command — recommended: add `startCommand` prefix:
-   `npx prisma migrate deploy && npm run start ...`)
+2. Render → **New → Web Service** → `api` (`docker/` build or the root
+   `Dockerfile`), plus a worker service and an attached Postgres.
+3. Fill `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBAPP_URL`, `JWT_SECRET`,
+   `ADMIN_PASSWORD`; optional `REDIS_URL`, `AI_API_KEY`.
+4. `startCommand`: `npx prisma migrate deploy && npx tsx packages/database/src/bootstrap.ts && node apps/api/dist/server.js`.
 
-### Bottime
-
-Set the webhook for the bot (`WEBHOOK_URL`/`WEBHOOK_SECRET` env) or keep polling
-(the default). Renders config: run the bot as its own service if you want a
-persistent long-poll process; otherwise the API can host it.
+The bot can run long-polling (its own service) or webhook mode
+(`WEBHOOK_URL`/`WEBHOOK_SECRET`).
 
 ## 4. Environment variable checklist
 

@@ -1,10 +1,21 @@
 import { z } from 'zod'
+import { config as loadDotenv } from 'dotenv'
+import { fileURLToPath } from 'node:url'
+import path from 'node:path'
 
 /**
  * Central env/config package. Loaded once per process.
  * Fail-lenient in development (sensible defaults), strict in production
  * (missing critical values throw at boot — never silently).
  */
+
+// Load the repo-root .env once, wherever this package is imported from.
+// packages/config/{src,dist} are both 3 levels below the repo root, so
+// the same relative path works for tsx (src) and tsc (dist) builds.
+// An explicit path avoids dotenv's default which resolves against process.cwd()
+// (npm workspaces run scripts with cwd = the workspace dir, not the root).
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+loadDotenv({ path: path.resolve(__dirname, '../../../.env'), quiet: true })
 
 const boolFromAny = z
   .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
@@ -63,7 +74,11 @@ let cache: Env | null = null
 
 export function loadEnv(overrides?: Partial<Record<string, string>>): Env {
   if (cache && !overrides) return cache
-  const source = { ...process.env, ...overrides }
+  const merged = { ...process.env, ...overrides }
+  // Drop empty-string values so `.env` lines like `JWT_SECRET=` are treated as
+  // "not set" and fall back to dev defaults instead of sabotaging dev fallbacks
+  // (which only fire when the key is absent).
+  const source = Object.fromEntries(Object.entries(merged).filter(([, v]) => v !== ''))
   const strict = source.NODE_ENV === 'production'
   const parsed = envSchema.safeParse(source)
   if (!parsed.success) {
