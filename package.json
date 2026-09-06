@@ -8,10 +8,13 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "build": "npm run build:packages && npm run build:apps",
+    "typecheck": "npm run build:packages && npm run typecheck:all",
     "lint": "npm run lint --workspaces --if-present",
     "test:unit": "npm run test:unit --workspaces --if-present",
+    "build:packages": "npm run build -w @driverhub/database -w @driverhub/config -w @driverhub/telegram -w @driverhub/ai -w @driverhub/types -w @driverhub/validation",
+    "build:apps": "npm run build -w @driverhub/api -w @driverhub/bot -w @driverhub/worker -w @driverhub/web -w @driverhub/admin",
+    "typecheck:all": "npm run typecheck --workspaces --if-present",
     "gen": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",

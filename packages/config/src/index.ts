@@ -15,7 +15,12 @@ import path from 'node:path'
 // An explicit path avoids dotenv's default which resolves against process.cwd()
 // (npm workspaces run scripts with cwd = the workspace dir, not the root).
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-loadDotenv({ path: path.resolve(__dirname, '../../../.env'), quiet: true })
+// Skip in tests so loadEnv() stays hermetic (vitest sets NODE_ENV=test before
+// importing; without this guard the repo-root .env would leak values like
+// DEMO_MODE/DATABASE_URL into process.env and break unit-test assertions).
+if (process.env.NODE_ENV !== 'test') {
+  loadDotenv({ path: path.resolve(__dirname, '../../../.env'), quiet: true })
+}
 
 const boolFromAny = z
   .union([z.boolean(), z.enum(['true', 'false', '1', '0'])])
