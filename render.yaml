@@ -89,9 +89,9 @@ services:
     healthCheckPath: /health
     startCommand: node apps/worker/dist/index.js
 
-  # ── PostgreSQL ───────────────────────────────────────────────────────
-  - type: pgsql
-    name: driverhub-db
+# ── PostgreSQL ───────────────────────────────────────────────────────
+databases:
+  - name: driverhub-db
     plan: free
     databaseName: driverhub
     ipAllowList: []
