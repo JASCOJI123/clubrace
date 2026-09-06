@@ -157,29 +157,72 @@ export function trendChangePct(current: number, previous: number): number | null
 
 // ==================== Series for charts ====================
 
+const pad2 = (n: number) => n.toString().padStart(2, '0')
+
+/**
+ * Local calendar date label (yyyy-MM-dd). Chart buckets must follow the driver's
+ * own clock, so we slice the LOCAL year/month/day — NOT a UTC ISO string (a UTC
+ * key would shift evenings/early-mornings to the wrong day in any non-zero offset).
+ */
 function dayKey(d: Date): string {
-  return startOfDay(d).toISOString().slice(0, 10)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+/** Parse a 'yyyy-MM-dd' label as LOCAL noon — a DST-safe anchor (never inside a gap hour), unlike midnight. */
+function parseDay(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y!, m! - 1, d!, 12)
+}
+
+function zeroDay(key: string): DayPoint {
+  return { date: key, label: key, income: 0, expenses: 0, net: 0, hours: 0, trips: 0 }
 }
 
 function ensureDay(map: Map<string, DayPoint>, key: string): DayPoint {
   let p = map.get(key)
   if (!p) {
-    p = { date: key, label: key, income: 0, expenses: 0, net: 0, hours: 0, trips: 0 }
+    p = zeroDay(key)
     map.set(key, p)
   }
   return p
 }
 
-/** Fill missing days between first and last date so charts are continuous. */
+/**
+ * Fill missing days between first and last data day so charts are continuous.
+ * Iterates in LOCAL calendar-day space (setDate from a noon anchor), so the full
+ * span — including the very last data day — is always emitted in every timezone.
+ */
 function fillGaps(map: Map<string, DayPoint>): DayPoint[] {
   if (map.size === 0) return []
   const keys = [...map.keys()].sort()
-  const first = new Date(keys[0]!)
-  const last = new Date(keys[keys.length - 1]!)
+  const stopKey = keys[keys.length - 1]!
+  const cursor = parseDay(keys[0]!)
   const out: DayPoint[] = []
-  for (let t = first.getTime(); t <= last.getTime(); t += DAY_MS) {
-    const d = new Date(t)
-    out.push(ensureDay(map, dayKey(d)))
+  for (;;) {
+    const key = dayKey(cursor)
+    out.push(ensureDay(map, key))
+    if (key === stopKey) break
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return out
+}
+
+/**
+ * Extend a series forward with zero days up to (and including) `until`. Charts
+ * always end on a bar — a day with no records is truthfully 0, never a gap.
+ */
+function padToEnd(days: DayPoint[], until: Date): DayPoint[] {
+  const lastDay = days[days.length - 1]
+  if (!lastDay) return days
+  const endKey = dayKey(until)
+  if (lastDay.date >= endKey) return days
+  const cursor = parseDay(lastDay.date)
+  const out = [...days]
+  for (;;) {
+    cursor.setDate(cursor.getDate() + 1)
+    const key = dayKey(cursor)
+    out.push(zeroDay(key))
+    if (key === endKey) break
   }
   return out
 }
@@ -214,7 +257,9 @@ export function buildDailySeries(
   let days = fillGaps(map)
   if (opts.startDate) days = days.filter((d) => d.date >= dayKey(opts.startDate!))
   if (opts.endDate) days = days.filter((d) => d.date <= dayKey(opts.endDate!))
-  return days
+  // End the series on a bar: zero-fill forward to the window end (default today).
+  // A day with no records is truthfully 0, never a missing point (spec RULE 4/6).
+  return padToEnd(days, opts.endDate ?? new Date())
 }
 
 export interface WeekPoint {
@@ -237,8 +282,9 @@ export function buildWeeklySeries(
   const weekOf = (d: Date) => {
     const day = startOfDay(d)
     const dow = (day.getDay() + 6) % 7 // Mon=0
-    const monday = new Date(day.getTime() - dow * DAY_MS)
-    return monday.toISOString().slice(0, 10)
+    // Calendar-day subtraction (noon anchor) — DST-safe and local, unlike DAY_MS / UTC ISO.
+    const monday = new Date(day.getFullYear(), day.getMonth(), day.getDate() - dow, 12)
+    return dayKey(monday)
   }
   const ensure = (k: string): WeekPoint => {
     let w = map.get(k)
