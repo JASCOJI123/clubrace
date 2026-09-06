@@ -1,133 +1,131 @@
-# DRIVER HUB — Deploy on Render (Free Tier)
+# DRIVER HUB — Render + UptimeRobot (24/7 bepul)
 
-> **Ogohlantirish:** Render bepul rejasida xizmatlar harakatsiz bo'lsa **uxlab
-> qoladi** (~15 daqiqadan keyin). Mini App qayta ochilsa, qayta ishga tushadi.
-> Lekin bot va worker cron ishlamasligi mumkin. Keyinchalik pullik rejaga o'tish
-> mumkin ($7/oydag'i Starter plan).
-
----
-
-## Variant 1 — Blueprint (tezroq)
-
-Repo'ni GitHub'ga push qiling. Render'da **New → Blueprint** → repo'ni tanlang.
-`render.yaml` avtomatik aniqlanadi.
-
-Render quyidagilarni yaratadi:
-| Xizmat | Vazifasi |
-|---|---|
-| `driverhub-api` | API + Mini App + Admin (bitta Docker container) |
-| `driverhub-worker` | Background cron ishlari (notification, score, report) |
-| `driverhub-db` | PostgreSQL (bepul, 90 kun saqlanadi — keyin o'chadi) |
-
-### Birinchi ishga tushirish
-
-Blueprint yaratilgandan keyin:
-1. Dashboard'da `driverhub-api` xizmatini oching.
-2. **Environment** bo'limiga qo'shing (agar `sync: false` qilingan bo'lsa):
-   - `TELEGRAM_BOT_TOKEN` — @BotFather dan olingan token
-   - `TELEGRAM_WEBAPP_URL` — Render beradigan URL: `https://driverhub-api.onrender.com`
-   - `CORS_ORIGINS` — xuddi shu URL
-3. Database URL avtomatik generatsiya qilinadi (`driverhub-db` xizmatidan). Agar
-   `DATABASE_URL` ko'rinmasa, uni qo'lda qo'shing:
-   `Internal Database URL` → `driverhub-db` → **Connect to external**
-   → `EXTERNAL DATABASE URL` ni ko'chirib qo'ying.
-4. **Manual Deploy → Deploy latest commit** — birinchi deploy avtomatik
-   `prisma migrate deploy` + bootstrap ishga tushiradi.
+> Render bepul rejada xizmatlar **~15 daqiqadan keyin uxlaydi**.
+> **UptimeRobot** (bepul) har 5 daqiqada health endpoint'ni ping qilib, xizmatni
+> doimiy jonli tutadi. Barcha xizmatlar 24/7 ishlaydi.
 
 ---
 
-## Variant 2 — Dashboard'da qo'lda (Blueprint'siz)
+## Arxitektura (3 xizmat + DB)
 
-### 1. GitHub'ga push
-
-```bash
-git remote add origin https://github.com/<SIZ>/clubrace.git
-git push -u origin main
+```
+UptimeRobot ──ping 5min──→ API    (Mini App + Admin + REST)
+UptimeRobot ──ping 5min──→ Bot    (Telegram webhook)
+UptimeRobot ──ping 5min──→ Worker (cron: notifications, score, reports)
+                          ↓
+                      PostgreSQL (bepul)
 ```
 
-### 2. Database yaratish
+---
 
-Render → **New → PostgreSQL** → Free plan → **Create Database**
-→ **Connect** → **EXTERNAL DATABASE URL** ni ko'chirib oling.
+## 1. GitHub'ga push
 
-### 3. API xizmati (Mini App + Admin + REST)
+```bash
+git add -A
+git commit -m "Render deploy: render.yaml + UptimeRobot"
+git push origin main
+```
 
-Render → **New → Web Service** → **Build Command:** `bash render-build.sh`
+## 2. Render Blueprint
 
+1. [render.com](https://render.com) → **New** → **Blueprint**
+2. GitHub repo'ni tanlang → **Apply**
+3. Render 4 ta xizmat yaratadi:
+   - `driverhub-api` — API + Mini App + Admin
+   - `driverhub-bot` — Telegram bot (webhook)
+   - `driverhub-worker` — Background cron ishlari
+   - `driverhub-db` — PostgreSQL (bepul, 90 kun saqlanadi)
+
+## 3. Environment Variables (har bir xizmat uchun)
+
+### driverhub-api (asosiy)
+
+| Variable | Qiymat |
+|---|---|
+| `DATABASE_URL` | Avtomatik (fromDatabase) |
+| `TELEGRAM_BOT_TOKEN` | @BotFather dan token |
+| `TELEGRAM_WEBAPP_URL` | `https://driverhub-api.onrender.com` (deploy keyin o'zgaradi) |
+| `CORS_ORIGINS` | `https://driverhub-api.onrender.com` |
+| `JWT_SECRET` | Avtomatik generatsiya |
+| `ADMIN_EMAIL` | `admin@driverhub.uz` |
+| `ADMIN_PASSWORD` | O'z kuchingizdagi parol |
+
+### driverhub-bot
+
+| Variable | Qiymat |
+|---|---|
+| `DATABASE_URL` | Avtomatik (fromDatabase) |
+| `TELEGRAM_BOT_TOKEN` | xuddi shu token |
+| `WEBHOOK_URL` | **Deploy keyin URL olinganidan keyin:** `https://driverhub-bot.onrender.com` |
+| `WEBHOOK_SECRET` | Avtomatik generatsiya |
+
+### driverhub-worker
+
+| Variable | Qiymat |
+|---|---|
+| `DATABASE_URL` | Avtomatik (fromDatabase) |
+| `TELEGRAM_BOT_TOKEN` | xuddi shu token (notification uchun) |
+
+## 4. Bot Webhook sozlash
+
+Bot webhook mode'da ishlaydi. Deploy tugagandan keyin:
+
+1. `driverhub-bot` xizmati URL'ini oling: `https://driverhub-bot.onrender.com`
+2. Bot xizmati env'iga qo'shing: `WEBHOOK_URL=https://driverhub-bot.onrender.com`
+3. **Manual Deploy → Deploy latest commit** — bot webhook'ni ro'yxatdan o'tkazadi
+4. Tekshiring: `curl https://driverhub-bot.onrender.com/health` → `{"ok":true}`
+
+## 5. UptimeRobot sozlash (24/7 uchun muhim!)
+
+[uptimerobot.com](https://uptimerobot.com) → bepul account oching → **Add New Monitor**:
+
+### Monitor 1 — API
 | Sozlama | Qiymat |
 |---|---|
-| Name | `driverhub-api` |
-| Runtime | Docker |
-| Build Command | `bash render-build.sh` |
-| Start Command | `sh -c "npx prisma migrate deploy && npx tsx packages/database/src/bootstrap.ts && node apps/api/dist/server.js"` |
-| Plan | Free |
-| Port | 4000 |
+| Monitor Type | HTTP(s) |
+| Friendly Name | `driverhub-api` |
+| URL | `https://driverhub-api.onrender.com/health` |
+| Monitoring Interval | 5 minutes |
 
-**Environment:**
-- `NODE_ENV` = `production`
-- `DEMO_MODE` = `false`
-- `API_HOST` = `0.0.0.0`
-- `DATABASE_URL` = (EXTERNAL DATABASE URL from step 2)
-- `TELEGRAM_BOT_TOKEN` = (BotFather token)
-- `TELEGRAM_WEBAPP_URL` = `https://driverhub-api.onrender.com` (deploy keyin URL o'zgaradi)
-- `JWT_SECRET` = (kuchli random: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`)
-- `ADMIN_EMAIL` = `admin@driverhub.uz`
-- `ADMIN_PASSWORD` = (o'zingiznikini kiriting)
-- `CORS_ORIGINS` = `https://driverhub-api.onrender.com`
-
-### 4. Worker xizmati (cron ishlari)
-
-Render → **New → Web Service** → **Build Command:** `bash render-build.sh`
-
+### Monitor 2 — Bot
 | Sozlama | Qiymat |
 |---|---|
-| Name | `driverhub-worker` |
-| Runtime | Docker |
-| Build Command | `bash render-build.sh` |
-| Start Command | `node apps/worker/dist/index.js` |
-| Plan | Free |
+| Monitor Type | HTTP(s) |
+| Friendly Name | `driverhub-bot` |
+| URL | `https://driverhub-bot.onrender.com/health` |
+| Monitoring Interval | 5 minutes |
 
-**Environment:** API xizmatidagi bilan bir xil, lekin:
-- `API_HOST` — kerak emas
-- `DEMO_MODE`, `CORS_ORIGINS` — kerak emas
+### Monitor 3 — Worker
+| Sozlama | Qiymat |
+|---|---|
+| Monitor Type | HTTP(s) |
+| Friendly Name | `driverhub-worker` |
+| URL | `https://driverhub-worker.onrender.com/health` |
+| Monitoring Interval | 5 minutes |
 
-### 5. Deploy
+> **Natija:** UptimeRobot har 5 daqiqada 3 ta URL'ni ping qiladi.
+> Render har bir ping'dan keyin xizmatni "jonlantiradi" — uxlab qolmaydi.
 
-Har bir xizmat uchun **Manual Deploy → Deploy latest commit** bosing.
+## 6. Telegram BotFather sozlash
 
----
+1. [@BotFather](https://t.me/BotFather) → `/mybots` → botingizni tanlang
+2. **Bot Settings → Menu Button → WebApp URL**
+   = `https://driverhub-api.onrender.com`
+3. **Bot Settings → Commands** — buyruqlar avtomatik ro'yxatdan o'tgan
 
-## Bot qo'shish (ixtiyoriy, pullik kerak)
+## 7. Tekshirish checklist
 
-Bot long-polling rejasida 24/7 ishlash uchun doimiy ishlab turishi kerak.
-Bepul Render'da bu ishlamaydi.
-
-Bot xizmatini qo'shish uchun:
-1. **New → Web Service** → `bash render-build.sh`
-2. Start Command: `node apps/bot/dist/bot.js`
-3. Plan: **Starter** ($7/oy) yoki boshqa free-tier tashqi xizmat.
-
----
-
-## Tekshirish (checklist)
-
-Deploy tugagandan keyin:
-
-1. `https://driverhub-api.onrender.com/` → Mini App HTML ko'rinishi kerak
-2. `https://driverhub-api.onrender.com/admin/` → Admin panel ochilishi kerak
-3. `https://driverhub-api.onrender.com/api/health` → JSON javob
-4. `https://driverhub-api.onrender.com/docs` → Swagger API hujjatlari
-
-Telegram BotFather'ga URL'ni qo'shing:
-- **My Bots → Bot Settings → Menu Button → WebApp URL**
-  = `https://driverhub-api.onrender.com`
-
----
-
-## Yangilash
-
-Har qanday `git push` dan keyin Render avtomatik qayta deploy qiladi (agar
-**Auto Deploy** yoqilgan bo'lsa). Yoki **Manual Deploy → Deploy latest commit**.
+| Tekshiruv | Kutilgan natija |
+|---|---|
+| `curl https://driverhub-api.onrender.com/health` | `{"status":"ok","service":"driverhub-api"}` |
+| `curl https://driverhub-bot.onrender.com/health` | `{"ok":true}` |
+| `curl https://driverhub-worker.onrender.com/health` | `{"status":"ok","service":"driverhub-worker"}` |
+| `curl https://driverhub-api.onrender.com/api/health` | JSON javob |
+| Browser: `https://driverhub-api.onrender.com/` | Mini App HTML |
+| Browser: `https://driverhub-api.onrender.com/admin/` | Admin panel login |
+| Browser: `https://driverhub-api.onrender.com/docs` | Swagger API |
+| UptimeRobot dashboard | 3 ta monitor yashil (Up) |
+| Telegram → bot → /start | Bot javob beradi |
 
 ---
 
@@ -135,7 +133,15 @@ Har qanday `git push` dan keyin Render avtomatik qayta deploy qiladi (agar
 
 | Masala | Yechim |
 |---|---|
-| Render bepul DB 90 kunda o'chadi | Periodik backup oling yoki pullik DB o'ting |
-| Bot 24/7 ishlash uchun pullik kerak | Starter plan ($7/oy) yoki Oracle VM |
-| Birinchi ochilish sekin | Render cold start (~30-60s). Keyingilari tezroq |
-| `TELEGRAM_WEBAPP_URL` deploy keyin o'zgaradi | Avtomatik URL ni BotFather'ga qo'shing |
+| Birinchi ochilish sekin (~60s) | Render cold start — normal, keyingilari tezroq |
+| DB 90 kunda o'chadi | Periodik backup oling yoki pullik DB o'ting |
+| `TELEGRAM_WEBAPP_URL` deploy keyin o'zgaradi | BotFather'ga yangi URL ni qo'shing |
+| Bot webhook avtomatik ro'yxatdan o'tmaydi | `WEBHOOK_URL` env'ini qo'shing + qayta deploy |
+| Pullik to'lovlar faqat admin orqali | `PAYMENT_PROVIDER=local` — haqiqiy pul o'tkazmasdan |
+
+---
+
+## Yangilash
+
+Har qanday `git push` dan keyin Render avtomatik qayta deploy qiladi
+(agar **Auto Deploy** yoqilgan bo'lsa). Yoki **Manual Deploy → Deploy latest commit**.

@@ -1,4 +1,11 @@
+# DRIVER HUB — Render.com Blueprint
+#
+# UptimeRobot bilan 24/7:
+#   Har bir web servis uchun https://<service>.onrender.com/health ni
+#   5 daqiqada bir marta ping qiling (Render bepul 15 daqiqa bo'sh tursa uxlaydi).
+
 services:
+  # ── API + Mini App + Admin ────────────────────────────────────────────
   - type: web
     name: driverhub-api
     runtime: docker
@@ -23,6 +30,10 @@ services:
         generateValue: true
       - key: CORS_ORIGINS
         sync: false
+      - key: WEBHOOK_URL
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true
     fromDatabase:
       name: driverhub-db
       property: connectionString
@@ -32,6 +43,34 @@ services:
              && npx tsx packages/database/src/bootstrap.ts
              && node apps/api/dist/server.js"
 
+  # ── Telegram Bot (webhook mode) ──────────────────────────────────────
+  # WEBHOOK_URL ni deploy keyin o'z xizmat URL'ingizga o'rnating:
+  #   WEBHOOK_URL=https://driverhub-bot.onrender.com
+  # UptimeRobot: https://driverhub-bot.onrender.com/health
+  - type: web
+    name: driverhub-bot
+    runtime: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+    fromDatabase:
+      name: driverhub-db
+      property: connectionString
+    healthCheckPath: /health
+    startCommand: node apps/bot/dist/bot.js
+
+  # ── Worker (cron: notifications, score, reports) ─────────────────────
+  # UptimeRobot: https://driverhub-worker.onrender.com/health
   - type: web
     name: driverhub-worker
     runtime: docker
@@ -42,11 +81,15 @@ services:
         value: production
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+      - key: DATABASE_URL
+        sync: false
     fromDatabase:
       name: driverhub-db
       property: connectionString
+    healthCheckPath: /health
     startCommand: node apps/worker/dist/index.js
 
+  # ── PostgreSQL ───────────────────────────────────────────────────────
   - type: pgsql
     name: driverhub-db
     plan: free
