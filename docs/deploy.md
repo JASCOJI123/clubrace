@@ -80,21 +80,20 @@ The `api` service runs `npx prisma migrate deploy` + an idempotent bootstrap
 (`packages/database/src/bootstrap.ts`, which creates the first admin and default
 settings **without** wiping data) on every boot.
 
-### Render (alternative — not truly 24/7)
+### Render (free tier)
 
-Render's free tier *scales to zero*: the bot's long-polling and the worker's cron
-are suspended on inactivity, so it is a demo/starting point rather than an
-always-on deployment.
+Render free tier *scales to zero* after ~15 min of inactivity — the Mini App
+relaunches fine when a user opens it, but the bot's long-polling and the worker's
+cron jobs are suspended. Good for a demo or starting point; for always-on use
+choose the Oracle VM above or a paid Render plan.
 
-1. Push the repo to GitHub.
-2. Render → **New → Web Service** → `api` (`docker/` build or the root
-   `Dockerfile`), plus a worker service and an attached Postgres.
-3. Fill `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBAPP_URL`, `JWT_SECRET`,
-   `ADMIN_PASSWORD`; optional `REDIS_URL`, `AI_API_KEY`.
-4. `startCommand`: `npx prisma migrate deploy && npx tsx packages/database/src/bootstrap.ts && node apps/api/dist/server.js`.
+📄 **[docs/deploy-render.md](deploy-render.md)** — full step-by-step guide
+(Blueprint or manual dashboard setup, env vars, bot, verification).
 
-The bot can run long-polling (its own service) or webhook mode
-(`WEBHOOK_URL`/`WEBHOOK_SECRET`).
+Quick version: `render.yaml` defines `driverhub-api` (API + frontend), `driverhub-worker`
+(cron) and `driverhub-db` (PostgreSQL, free 90-day). Build command:
+`bash render-build.sh`. Start command:
+`sh -c "npx prisma migrate deploy && npx tsx packages/database/src/bootstrap.ts && node apps/api/dist/server.js"`.
 
 ## 4. Environment variable checklist
 

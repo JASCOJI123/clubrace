@@ -95,6 +95,7 @@ npm run dev:worker # background jobs
 - [docs/api.md](docs/api.md) (+ live OpenAPI at `/docs` on the API)
 - [docs/deploy.md](docs/deploy.md) (local dev + production topology)
 - [docs/deploy-oracle.md](docs/deploy-oracle.md) (free 24/7 Docker deployment on Oracle Cloud Always Free)
+- [docs/deploy-render.md](docs/deploy-render.md) (Render.com free tier deployment — Blueprint + manual)
 - [docs/legal.md](docs/legal.md) (route marketplace, payments, data)
 - [docs/roadmap.md](docs/roadmap.md) (explicit deferrals: live payments, Elasticsearch, continuous location)
 

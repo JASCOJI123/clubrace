@@ -1,0 +1,54 @@
+services:
+  - type: web
+    name: driverhub-api
+    runtime: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DEMO_MODE
+        value: "false"
+      - key: API_HOST
+        value: "0.0.0.0"
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_WEBAPP_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_EMAIL
+        value: admin@driverhub.uz
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: CORS_ORIGINS
+        sync: false
+    fromDatabase:
+      name: driverhub-db
+      property: connectionString
+    healthCheckPath: /health
+    startCommand: >
+      sh -c "npx prisma migrate deploy
+             && npx tsx packages/database/src/bootstrap.ts
+             && node apps/api/dist/server.js"
+
+  - type: web
+    name: driverhub-worker
+    runtime: docker
+    dockerfilePath: Dockerfile
+    plan: free
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+    fromDatabase:
+      name: driverhub-db
+      property: connectionString
+    startCommand: node apps/worker/dist/index.js
+
+  - type: pgsql
+    name: driverhub-db
+    plan: free
+    databaseName: driverhub
+    ipAllowList: []

@@ -1,4 +1,5 @@
 import cron from 'node-cron'
+import { createServer } from 'node:http'
 import { getEnv } from './env.js'
 import { createJobQueue } from './queue.js'
 import { notificationJobHandlers } from './jobs/notifications.js'
@@ -30,6 +31,17 @@ const CRON = {
 
 async function main() {
   const env = getEnv()
+
+  // Health server. Hosted platforms (Render) treat background workers as `web`
+  // services and require them to bind $PORT and answer health checks. All real
+  // work stays in cron/BullMQ; this only returns 200 so the deploy stays healthy.
+  const healthPort = Number(process.env.PORT ?? 4100)
+  const healthServer = createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' })
+    res.end(JSON.stringify({ status: 'ok', service: 'driverhub-worker' }))
+  })
+  await new Promise<void>((resolve) => healthServer.listen(healthPort, '0.0.0.0', resolve))
+  console.log(`[worker] health server on :${healthPort}`)
 
   // `add` is forward-declared: the queue hands notificationJobHandlers a wrapper
   // that calls this same `add` at job-run time (by then it is assigned).
@@ -91,6 +103,7 @@ async function main() {
   const shutdown = async (signal: string) => {
     console.log(`[worker] ${signal} — closing queue + cron`)
     tasks.forEach((t) => t.stop())
+    healthServer.close()
     await queue.close()
     process.exit(0)
   }
