@@ -32,9 +32,23 @@ export function createBot(): Telegraf | null {
 async function main() {
   const env = getEnv()
   const bot = createBot()
-  if (!bot) return
 
+  // Render (and similar PaaS) health-checks every "web" service by scanning for an
+  // open $PORT. Bind this unconditionally — independent of webhook vs. long-polling —
+  // so the very first deploy succeeds even before WEBHOOK_URL is configured.
+  const port = Number(process.env.PORT ?? env.API_PORT + 1)
   const webhookUrl = env.WEBHOOK_URL
+
+  if (!bot) {
+    http
+      .createServer((_req, res) => {
+        res.writeHead(200, { 'content-type': 'application/json' })
+        res.end(JSON.stringify({ ok: true, bot: 'disabled' }))
+      })
+      .listen(port, () => console.log(`🔌 Health server listening on :${port} (bot disabled)`))
+    return
+  }
+
   if (webhookUrl) {
     const fullWebhook = `${webhookUrl.replace(/\/$/, '')}/webhook`
     await bot.telegram.setWebhook(fullWebhook, env.WEBHOOK_SECRET ? { secret_token: env.WEBHOOK_SECRET } : {})
@@ -49,12 +63,18 @@ async function main() {
       }
       void handler(req, res)
     })
-    const port = Number(process.env.PORT ?? env.API_PORT + 1)
     server.listen(port, () => console.log(`🔌 Bot webhook server listening on :${port}/webhook`))
     return
   }
 
-  // Default: long polling.
+  // Long polling: still bind a plain health server so Render's port scan passes.
+  http
+    .createServer((_req, res) => {
+      res.writeHead(200, { 'content-type': 'application/json' })
+      res.end(JSON.stringify({ ok: true, mode: 'polling' }))
+    })
+    .listen(port, () => console.log(`🔌 Health server listening on :${port} (long polling mode)`))
+
   await bot.launch()
   console.log('🤖 Driver Hub bot is running (long polling) — Ctrl+C to stop')
 }
