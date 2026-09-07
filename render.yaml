@@ -16,8 +16,6 @@ services:
         value: production
       - key: DEMO_MODE
         value: "false"
-      - key: PORT
-        value: "3000"
       - key: API_HOST
         value: "0.0.0.0"
       - key: TELEGRAM_BOT_TOKEN
@@ -41,7 +39,7 @@ services:
           name: driverhub-db
           property: connectionString
     healthCheckPath: /health
-    dockerCommand: sh -c "npx prisma migrate deploy && npx tsx packages/database/src/bootstrap.ts && node apps/api/dist/server.js"
+    dockerCommand: npx prisma migrate deploy && npx tsx packages/database/src/bootstrap.ts && node apps/api/dist/server.js
 
   # ── Telegram Bot (webhook mode) ──────────────────────────────────────
   # WEBHOOK_URL ni deploy keyin o'z xizmat URL'ingizga o'rnating:
@@ -55,12 +53,10 @@ services:
     envVars:
       - key: NODE_ENV
         value: production
-      - key: PORT
-        value: "3001"
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: WEBHOOK_URL
-        value: "https://driverhub-bot.onrender.com"
+        sync: false
       - key: WEBHOOK_SECRET
         generateValue: true
       - key: DATABASE_URL
