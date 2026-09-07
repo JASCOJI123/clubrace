@@ -34,9 +34,10 @@ services:
         sync: false
       - key: WEBHOOK_SECRET
         generateValue: true
-    fromDatabase:
-      name: driverhub-db
-      property: connectionString
+      - key: DATABASE_URL
+        fromDatabase:
+          name: driverhub-db
+          property: connectionString
     healthCheckPath: /health
     startCommand: >
       sh -c "npx prisma migrate deploy
@@ -62,10 +63,9 @@ services:
       - key: WEBHOOK_SECRET
         generateValue: true
       - key: DATABASE_URL
-        sync: false
-    fromDatabase:
-      name: driverhub-db
-      property: connectionString
+        fromDatabase:
+          name: driverhub-db
+          property: connectionString
     healthCheckPath: /health
     startCommand: node apps/bot/dist/bot.js
 
@@ -82,10 +82,9 @@ services:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: DATABASE_URL
-        sync: false
-    fromDatabase:
-      name: driverhub-db
-      property: connectionString
+        fromDatabase:
+          name: driverhub-db
+          property: connectionString
     healthCheckPath: /health
     startCommand: node apps/worker/dist/index.js
 
