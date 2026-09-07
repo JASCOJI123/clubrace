@@ -1,5 +1,6 @@
 import http from 'node:http'
 import { Telegraf } from 'telegraf'
+import { sanitizeWebhookSecret } from '@driverhub/telegram'
 import { getEnv } from './env.js'
 import { registerCommands } from './commands.js'
 import { deliverNotification } from './notify.js'
@@ -51,10 +52,11 @@ async function main() {
 
   if (webhookUrl) {
     const fullWebhook = `${webhookUrl.replace(/\/$/, '')}/webhook`
-    await bot.telegram.setWebhook(fullWebhook, env.WEBHOOK_SECRET ? { secret_token: env.WEBHOOK_SECRET } : {})
+    const secret = env.WEBHOOK_SECRET ? sanitizeWebhookSecret(env.WEBHOOK_SECRET) : undefined
+    await bot.telegram.setWebhook(fullWebhook, secret ? { secret_token: secret } : {})
     console.log(`🔌 Bot webhook registered: ${fullWebhook}`)
 
-    const handler = bot.webhookCallback('/webhook', env.WEBHOOK_SECRET ? { secretToken: env.WEBHOOK_SECRET } : {})
+    const handler = bot.webhookCallback('/webhook', secret ? { secretToken: secret } : {})
     const server = http.createServer((req, res) => {
       if (req.url === '/health') {
         res.writeHead(200, { 'content-type': 'application/json' })
