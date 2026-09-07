@@ -39,7 +39,7 @@ services:
           name: driverhub-db
           property: connectionString
     healthCheckPath: /health
-    dockerCommand: npx prisma migrate deploy && npx tsx packages/database/src/bootstrap.ts && node apps/api/dist/server.js
+    dockerCommand: /bin/sh -c "npx prisma migrate deploy && npx tsx packages/database/src/bootstrap.ts && node apps/api/dist/server.js"
 
   # ── Telegram Bot (webhook mode) ──────────────────────────────────────
   # WEBHOOK_URL ni deploy keyin o'z xizmat URL'ingizga o'rnating:
