@@ -39,7 +39,7 @@ services:
           name: driverhub-db
           property: connectionString
     healthCheckPath: /health
-    startCommand: >
+    dockerCommand: >
       sh -c "npx prisma migrate deploy
              && npx tsx packages/database/src/bootstrap.ts
              && node apps/api/dist/server.js"
@@ -67,7 +67,7 @@ services:
           name: driverhub-db
           property: connectionString
     healthCheckPath: /health
-    startCommand: node apps/bot/dist/bot.js
+    dockerCommand: node apps/bot/dist/bot.js
 
   # ── Worker (cron: notifications, score, reports) ─────────────────────
   # UptimeRobot: https://driverhub-worker.onrender.com/health
@@ -86,7 +86,7 @@ services:
           name: driverhub-db
           property: connectionString
     healthCheckPath: /health
-    startCommand: node apps/worker/dist/index.js
+    dockerCommand: node apps/worker/dist/index.js
 
 # ── PostgreSQL ───────────────────────────────────────────────────────
 databases:
