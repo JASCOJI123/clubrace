@@ -14,6 +14,14 @@ import { storagePlugin, UPLOADS_ROOT } from './plugins/storage.js'
 import { uiPlugin } from './plugins/ui.js'
 import { registerRoutes } from './routes/index.js'
 
+// Prisma returns BigInt for `telegramId`/`referredByTgId` (see schema.prisma).
+// JSON.stringify has no native support for BigInt and throws "Do not know how
+// to serialize a BigInt" — this affects EVERY route that returns a user, not
+// just one endpoint, so we fix it once, globally, at the JSON level.
+;(BigInt.prototype as unknown as { toJSON: () => string }).toJSON = function () {
+  return this.toString()
+}
+
 /** Build the Fastify application (testable via app.inject). */
 export function buildApp(opts: { logger?: boolean } = {}): FastifyInstance {
   const env = getEnv()
