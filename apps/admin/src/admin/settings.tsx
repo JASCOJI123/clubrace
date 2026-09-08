@@ -18,7 +18,7 @@ export function SettingsPage() {
   const save = useMutation({
     mutationFn: () =>
       adminApi.patchSettings({
-        ...(proPrice !== '' && Number(proPrice) !== loadedPrice ? { proPriceMonth: Number(proPrice) } : {}),
+        ...(proPrice !== '' && Math.round(Number(proPrice)) !== loadedPrice ? { proPriceMonth: Math.round(Number(proPrice)) } : {}),
         ...(commission !== '' && Number(commission) !== data.data?.marketplaceCommissionPercent
           ? { marketplaceCommissionPercent: Number(commission) }
           : {}),
