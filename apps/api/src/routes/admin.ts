@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
+import bcrypt from 'bcryptjs'
 import { prisma, type Prisma } from '@driverhub/database'
-import { driverAdminUpdateSchema, broadcastSchema, challengeAdminSchema, settingsUpdateSchema, supportReplySchema, idParam } from '@driverhub/validation'
+import { driverAdminUpdateSchema, broadcastSchema, challengeAdminSchema, settingsUpdateSchema, supportReplySchema, partnerCreateSchema, idParam } from '@driverhub/validation'
 import { ApiError } from '../lib/errors.js'
 import { writeAdminAction } from '../lib/audit.js'
 import { getProductSettings, setProductSettings, getFlags, setFlags } from '../services/settingsService.js'
@@ -171,6 +172,44 @@ export async function adminRoutes(app: FastifyInstance) {
   })
 
   // ---- moderation: partners & reports ----
+  app.post('/admin/partners', { preHandler: adminOnly }, async (req) => {
+    const body = partnerCreateSchema.parse(req.body)
+    const emailLower = body.email.trim().toLowerCase()
+
+    const existing = await prisma.adminUser.findUnique({ where: { email: emailLower } })
+    if (existing) throw ApiError.conflict('Bu email allaqachon ro‘yxatdan o‘tgan')
+
+    const passwordHash = await bcrypt.hash(body.password, 10)
+
+    const { partner } = await prisma.$transaction(async (tx) => {
+      const user = await tx.user.create({
+        data: { role: 'PARTNER', name: body.businessName, onboardingDone: true },
+      })
+      await tx.adminUser.create({ data: { userId: user.id, email: emailLower, passwordHash } })
+      // Admin-created partners go live immediately — no self-signup review needed.
+      const partner = await tx.partner.create({
+        data: {
+          userId: user.id,
+          businessName: body.businessName,
+          phone: body.phone ?? null,
+          category: body.category ?? null,
+          status: 'APPROVED',
+        },
+      })
+      return { partner }
+    })
+
+    await writeAdminAction({
+      actorId: uid(req),
+      action: 'OFFER_APPROVE',
+      targetType: 'partner',
+      targetId: partner.id,
+      metadata: { created: true, businessName: body.businessName },
+    })
+
+    return { partner }
+  })
+
   app.get('/admin/partners', { preHandler: adminOnly }, async (req) => {
     const rows = await prisma.partner.findMany({
       where: { status: { in: ['PENDING', 'APPROVED', 'SUSPENDED'] } },
