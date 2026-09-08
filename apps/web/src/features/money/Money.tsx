@@ -77,9 +77,14 @@ export function Money() {
               loading={workStarted}
               onClick={async () => {
                 setWorkStarted(true)
-                await workApi.start()
-                setWorkStarted(false)
-                void current.refetch()
+                try {
+                  await workApi.start()
+                  void current.refetch()
+                } catch (err) {
+                  alert(err instanceof Error ? err.message : 'Xatolik yuz berdi')
+                } finally {
+                  setWorkStarted(false)
+                }
               }}
             >
               ▶ Boshla
