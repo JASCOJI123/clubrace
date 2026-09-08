@@ -35,7 +35,7 @@ export class ApiClientError extends Error {
 async function request<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const t = getToken()
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(opts.body !== undefined && !(opts.body instanceof FormData) ? { 'Content-Type': 'application/json' } : {}),
     ...(t ? { Authorization: `Bearer ${t}` } : {}),
     ...(opts.headers as Record<string, string> | undefined),
   }
