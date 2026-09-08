@@ -18,7 +18,6 @@ export function Login() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const [demoBusy, setDemoBusy] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -43,21 +42,6 @@ export function Login() {
       setError(err instanceof Error ? err.message : 'Kirish amalga oshmadi')
     } finally {
       setBusy(false)
-    }
-  }
-
-  async function demoLogin(role: 'ADMIN' | 'PARTNER') {
-    setError(null)
-    setDemoBusy(true)
-    try {
-      const res = await authApi.devLogin(role)
-      setToken(res.token)
-      setSession({ userId: 'demo', role, name: role === 'ADMIN' ? 'Demo Admin' : 'Demo Hamkor', email: null })
-      navigate('/')
-    } catch (err) {
-      setError(`${err instanceof Error ? err.message : 'Xato'} — DEMO rejimda seed ishga tushirilgan bo‘lishi kerak`)
-    } finally {
-      setDemoBusy(false)
     }
   }
 
@@ -101,20 +85,6 @@ export function Login() {
             Kirish
           </Button>
         </form>
-
-        <div style={{ marginTop: 22, borderTop: `1px solid var(--dh-border)`, paddingTop: 16, display: 'grid', gap: 8 }}>
-          <Text variant="caption" tone="muted">
-            Demo rejim (seed talab qilinadi, faqat mahalliy):
-          </Text>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Button size="sm" variant="outline" loading={demoBusy} onClick={() => void demoLogin('ADMIN')} style={{ flex: 1 }}>
-              Demo Admin
-            </Button>
-            <Button size="sm" variant="outline" loading={demoBusy} onClick={() => void demoLogin('PARTNER')} style={{ flex: 1 }}>
-              Demo Hamkor
-            </Button>
-          </div>
-        </div>
       </Card>
     </div>
   )
