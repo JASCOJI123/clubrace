@@ -105,10 +105,14 @@ function OfferQueue() {
     mutationFn: (v: { id: string; action: 'APPROVE' | 'REJECT' | 'SUSPEND' }) => adminApi.moderateOffer(v.id, v.action),
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['mod-offers'] }),
   })
+  const remove = useMutation({
+    mutationFn: (id: string) => adminApi.deleteOffer(id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['mod-offers'] }),
+  })
 
   if (list.isLoading) return <LoadingRows rows={4} />
   if (list.isError) return <Card><Text variant="body" tone="danger">{(list.error as Error).message}</Text></Card>
-  if (list.data?.items.length === 0) return <Empty text="Takliflar navbati bo‘sh" />
+  if (list.data?.items.length === 0) return <Empty text="Takliflar hali yo‘q" />
 
   return (
     <Table headers={['Taklif', 'Chegirma', 'Amal/qadar', 'Hamkor', 'Holat', 'Amallar']}>
@@ -121,14 +125,30 @@ function OfferQueue() {
             </Text>
           </Td>
           <Td>{o.discountText ?? '—'}</Td>
-          <Td>{shortDate(o.validUntil)}</Td>
+          <Td>{o.validUntil ? shortDate(o.validUntil) : 'Muddatsiz'}</Td>
           <Td>{o.partner?.businessName ?? '—'}</Td>
           <Td><StatusBadge status={o.status} /></Td>
           <Td>
             <ActionsRow>
-              <Button size="sm" onClick={() => void mutate.mutateAsync({ id: o.id, action: 'APPROVE' })}>✓ Tasdiqlash</Button>
-              <Button size="sm" variant="outline" onClick={() => void mutate.mutateAsync({ id: o.id, action: 'REJECT' })}>✕ Rad etish</Button>
-              <Button size="sm" variant="danger" onClick={() => void mutate.mutateAsync({ id: o.id, action: 'SUSPEND' })}>⏸ To‘xtatish</Button>
+              {o.status !== 'APPROVED' && (
+                <Button size="sm" onClick={() => void mutate.mutateAsync({ id: o.id, action: 'APPROVE' })}>✓ Tasdiqlash</Button>
+              )}
+              {o.status !== 'REJECTED' && (
+                <Button size="sm" variant="outline" onClick={() => void mutate.mutateAsync({ id: o.id, action: 'REJECT' })}>✕ Rad etish</Button>
+              )}
+              {o.status === 'APPROVED' && (
+                <Button size="sm" variant="outline" onClick={() => void mutate.mutateAsync({ id: o.id, action: 'SUSPEND' })}>⏸ To‘xtatish</Button>
+              )}
+              <Button
+                size="sm"
+                variant="danger"
+                loading={remove.isPending}
+                onClick={() => {
+                  if (confirm(`"${o.title}" taklifini butunlay o‘chirmoqchimisiz?`)) void remove.mutateAsync(o.id)
+                }}
+              >
+                🗑 O‘chirish
+              </Button>
             </ActionsRow>
           </Td>
         </tr>
