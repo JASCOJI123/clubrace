@@ -115,9 +115,9 @@ export async function adminRoutes(app: FastifyInstance) {
   // ---- moderation: marketplace listings ----
   app.get('/admin/moderation/listings', { preHandler: adminOnly }, async (req) => {
     const rows = await prisma.marketplaceListing.findMany({
-      where: { status: { in: ['PENDING', 'REJECTED'] } },
-      orderBy: { createdAt: 'asc' },
-      take: 50,
+      where: { status: { in: ['PENDING', 'REJECTED', 'APPROVED'] } },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
       include: { user: { select: { name: true } }, category: { select: { name: true } }, images: { select: { url: true } } },
     })
     return { items: rows }
@@ -331,6 +331,18 @@ export async function adminRoutes(app: FastifyInstance) {
     const body = challengeAdminSchema.partial().parse(req.body)
     const challenge = await prisma.challenge.update({ where: { id }, data: body })
     return { challenge }
+  })
+
+  app.delete('/admin/challenges/:id', { preHandler: adminOnly }, async (req) => {
+    const { id } = idParam.parse(req.params)
+    const challenge = await prisma.challenge.findUnique({ where: { id }, include: { _count: { select: { participants: true } } } })
+    if (!challenge) throw ApiError.notFound('Challenge topilmadi')
+    if (challenge._count.participants > 0) {
+      throw ApiError.conflict('Bu challenge-ga haydovchilar allaqachon qo‘shilgan — o‘chirish o‘rniga muddatini tugating')
+    }
+    await prisma.challenge.delete({ where: { id } })
+    await writeAdminAction({ actorId: uid(req), action: 'OFFER_REJECT', targetType: 'challenge', targetId: id, metadata: { deleted: true } })
+    return { ok: true }
   })
 
   // ---- settings & demo mode (spec §60) ----

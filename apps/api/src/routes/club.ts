@@ -57,7 +57,7 @@ export async function clubRoutes(app: FastifyInstance) {
     const { id } = idParam.parse(req.params)
     const userId = uid(req)
     const offer = await prisma.partnerOffer.findFirst({
-      where: { id, status: 'APPROVED', deletedAt: null, validUntil: { gt: new Date() } },
+      where: { id, status: 'APPROVED', deletedAt: null, OR: [{ validUntil: null }, { validUntil: { gt: new Date() } }] },
     })
     if (!offer) throw ApiError.notFound('Taklif topilmadi yoki muddati o‘tgan')
     try {
