@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { prisma } from '@driverhub/database'
-import { carSchema, idParam, maintenanceSchema } from '@driverhub/validation'
+import { carSchema, idParam, maintenanceSchema, mileageLogSchema } from '@driverhub/validation'
 import { ApiError } from '../lib/errors.js'
 import { uid, takeNum } from './helpers.js'
 
@@ -154,6 +154,51 @@ export async function carsRoutes(app: FastifyInstance) {
         status: !m.nextDueDate ? 'none' : m.nextDueDate < now ? 'overdue' : m.nextDueDate < horizon ? 'warn' : 'ok',
       })),
     }
+  })
+
+  // ==================== Mileage history (odometer over time) ====================
+  app.get('/cars/:id/mileage', { preHandler: driverOnly }, async (req) => {
+    const { id } = idParam.parse(req.params)
+    await getOwnedCar(uid(req), id)
+    const items = await prisma.carMileageLog.findMany({
+      where: { carId: id },
+      orderBy: { date: 'asc' },
+      take: 200,
+    })
+    return { items }
+  })
+
+  app.post('/cars/:id/mileage', { preHandler: driverOnly }, async (req) => {
+    const { id } = idParam.parse(req.params)
+    const userId = uid(req)
+    await getOwnedCar(userId, id)
+    const body = mileageLogSchema.omit({ carId: true }).parse(req.body)
+    const item = await prisma.$transaction(async (tx) => {
+      const log = await tx.carMileageLog.create({
+        data: { carId: id, userId, mileageKms: body.mileageKms, date: body.date ?? new Date(), note: body.note },
+      })
+      // Keep Car.mileageKms (used elsewhere for per-km cost math) synced to the
+      // highest reading on record, regardless of entry order.
+      const max = await tx.carMileageLog.aggregate({ where: { carId: id }, _max: { mileageKms: true } })
+      if (max._max.mileageKms != null) {
+        await tx.car.update({ where: { id }, data: { mileageKms: max._max.mileageKms } })
+      }
+      return log
+    })
+    return { item }
+  })
+
+  app.delete('/mileage/:id', { preHandler: driverOnly }, async (req) => {
+    const { id } = idParam.parse(req.params)
+    const userId = uid(req)
+    const existing = await prisma.carMileageLog.findFirst({ where: { id, userId } })
+    if (!existing) throw ApiError.notFound('Yozuv topilmadi')
+    await prisma.$transaction(async (tx) => {
+      await tx.carMileageLog.delete({ where: { id } })
+      const max = await tx.carMileageLog.aggregate({ where: { carId: existing.carId }, _max: { mileageKms: true } })
+      await tx.car.update({ where: { id: existing.carId }, data: { mileageKms: max._max.mileageKms ?? 0 } })
+    })
+    return { ok: true }
   })
 }
 
