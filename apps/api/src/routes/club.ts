@@ -19,7 +19,7 @@ export async function clubRoutes(app: FastifyInstance) {
       where: {
         status: 'APPROVED',
         deletedAt: null,
-        validUntil: { gt: new Date() },
+        OR: [{ validUntil: null }, { validUntil: { gt: new Date() } }],
         ...(q.category ? { category: q.category } : {}),
       },
       orderBy: [{ featured: 'desc' }, { views: 'desc' }],
