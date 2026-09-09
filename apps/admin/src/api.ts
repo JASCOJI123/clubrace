@@ -303,6 +303,9 @@ export const adminApi = {
   patchChallenge(id: string, body: Partial<{ name: string; description: string; reward: string; status: string }>) {
     return patch<{ challenge: ChallengeAdminItem }>(`/admin/challenges/${id}`, body)
   },
+  deleteChallenge(id: string) {
+    return del<{ ok: boolean }>(`/admin/challenges/${id}`)
+  },
   settings() {
     return get<{ proPriceMonth: number; marketplaceCommissionPercent: number; demoMode: boolean }>('/admin/settings')
   },
