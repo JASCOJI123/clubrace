@@ -46,6 +46,12 @@ export function Challenges() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['admin-challenges'] }),
   })
 
+  const remove = useMutation({
+    mutationFn: (id: string) => adminApi.deleteChallenge(id),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['admin-challenges'] }),
+    onError: (err) => alert(err instanceof Error ? err.message : 'Xatolik'),
+  })
+
   return (
     <div>
       <PageHeader
@@ -152,6 +158,18 @@ export function Challenges() {
                   {c.status === 'ACTIVE' && (
                     <Button size="sm" variant="outline" onClick={() => void patchStatus.mutateAsync({ id: c.id, status: 'FINISHED' })}>
                       ⏹ Yakunlash
+                    </Button>
+                  )}
+                  {c._count.participants === 0 && (
+                    <Button
+                      size="sm"
+                      variant="danger"
+                      loading={remove.isPending}
+                      onClick={() => {
+                        if (confirm(`"${c.name}" challenge-ni o‘chirmoqchimisiz?`)) void remove.mutateAsync(c.id)
+                      }}
+                    >
+                      🗑 O‘chirish
                     </Button>
                   )}
                 </ActionsRow>

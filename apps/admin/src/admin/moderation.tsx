@@ -63,7 +63,7 @@ function ListingQueue() {
 
   if (list.isLoading) return <LoadingRows rows={4} />
   if (list.isError) return <Card><Text variant="body" tone="danger">{(list.error as Error).message}</Text></Card>
-  if (list.data?.items.length === 0) return <Empty text="Moderatsiya navbati bo‘sh" />
+  if (list.data?.items.length === 0) return <Empty text="E’lonlar hali yo‘q" />
 
   return (
     <Table headers={['E’lon', 'Narx', 'Holat', 'Muallif', 'Amallar']}>
@@ -85,9 +85,15 @@ function ListingQueue() {
           <Td>{l.user?.name ?? '—'}</Td>
           <Td>
             <ActionsRow>
-              <Button size="sm" onClick={() => void mutate.mutateAsync({ id: l.id, action: 'APPROVE' })}>✓ Tasdiqlash</Button>
-              <Button size="sm" variant="outline" onClick={() => void mutate.mutateAsync({ id: l.id, action: 'REJECT' })}>✕ Rad etish</Button>
-              <Button size="sm" variant="danger" onClick={() => void mutate.mutateAsync({ id: l.id, action: 'REMOVE' })}>Olib tashlash</Button>
+              {l.status !== 'APPROVED' && (
+                <Button size="sm" onClick={() => void mutate.mutateAsync({ id: l.id, action: 'APPROVE' })}>✓ Tasdiqlash</Button>
+              )}
+              {l.status !== 'REJECTED' && (
+                <Button size="sm" variant="outline" onClick={() => void mutate.mutateAsync({ id: l.id, action: 'REJECT' })}>✕ Rad etish</Button>
+              )}
+              {l.status !== 'REMOVED' && (
+                <Button size="sm" variant="danger" onClick={() => void mutate.mutateAsync({ id: l.id, action: 'REMOVE' })}>🗑 Olib tashlash</Button>
+              )}
             </ActionsRow>
           </Td>
         </tr>
