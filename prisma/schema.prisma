@@ -342,6 +342,7 @@ model User {
   adminUser          AdminUser?
   cars               Car[]
   maintenance        MaintenanceRecord[]
+  mileageLogs        CarMileageLog[]
   incomeRecords      IncomeRecord[]
   expenseRecords     ExpenseRecord[]
   workSessions       WorkSession[]
@@ -427,6 +428,7 @@ model Car {
   user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
   documents     CarDocument[]
   maintenance   MaintenanceRecord[]
+  mileageLogs   CarMileageLog[]
   expenses      ExpenseRecord[]
   income        IncomeRecord[]
   routes        Route[]
@@ -471,6 +473,24 @@ model MaintenanceRecord {
   @@index([carId])
   @@index([nextDueDate])
   @@map("maintenance_records")
+}
+
+/// Time-series odometer readings, so drivers can track how far they've driven
+/// over time (not just the single "current mileage" snapshot on Car).
+model CarMileageLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String   @db.Uuid
+  carId      String   @db.Uuid
+  mileageKms Int
+  date       DateTime @default(now())
+  note       String?
+  createdAt  DateTime @default(now())
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  car        Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+
+  @@index([carId, date])
+  @@map("car_mileage_logs")
 }
 
 // ================= FINANCE =================
