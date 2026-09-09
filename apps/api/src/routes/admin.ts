@@ -145,12 +145,21 @@ export async function adminRoutes(app: FastifyInstance) {
   // ---- moderation: partner offers ----
   app.get('/admin/moderation/offers', { preHandler: adminOnly }, async (req) => {
     const rows = await prisma.partnerOffer.findMany({
-      where: { status: { in: ['PENDING', 'REJECTED'] }, deletedAt: null },
-      orderBy: { createdAt: 'asc' },
-      take: 50,
+      where: { deletedAt: null },
+      orderBy: { createdAt: 'desc' },
+      take: 100,
       include: { partner: { select: { businessName: true } } },
     })
     return { items: rows }
+  })
+
+  app.delete('/admin/moderation/offers/:id', { preHandler: adminOnly }, async (req) => {
+    const { id } = idParam.parse(req.params)
+    const offer = await prisma.partnerOffer.findFirst({ where: { id, deletedAt: null } })
+    if (!offer) throw ApiError.notFound('Taklif topilmadi')
+    await prisma.partnerOffer.update({ where: { id }, data: { deletedAt: new Date() } })
+    await writeAdminAction({ actorId: uid(req), action: 'OFFER_REJECT', targetType: 'offer', targetId: id, metadata: { deleted: true } })
+    return { ok: true }
   })
 
   app.post('/admin/moderation/offers/:id', { preHandler: adminOnly }, async (req) => {
@@ -226,7 +235,12 @@ export async function adminRoutes(app: FastifyInstance) {
     if (!['APPROVED', 'REJECTED', 'SUSPENDED'].includes(body.status)) throw ApiError.badRequest('status noto‘g‘ri')
     const partner = await prisma.partner.findUnique({ where: { id } })
     if (!partner) throw ApiError.notFound('Hamkor topilmadi')
-    await prisma.partner.update({ where: { id }, data: { status: body.status } })
+    // Suspending/rejecting a partner must also revoke their panel login — otherwise
+    // a "to'xtatilgan" partner could still sign in with their existing password.
+    await prisma.$transaction([
+      prisma.partner.update({ where: { id }, data: { status: body.status } }),
+      prisma.adminUser.update({ where: { userId: partner.userId }, data: { isActive: body.status === 'APPROVED' } }),
+    ])
     await writeAdminAction({
       actorId: uid(req),
       action: 'OFFER_APPROVE',
