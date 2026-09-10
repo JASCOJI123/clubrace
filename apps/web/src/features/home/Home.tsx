@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { Badge, Card, CardSkeleton, ErrorState, MoneyText, Progress, Row, Screen, Text, tokens } from '@driverhub/ui'
+import { Badge, Card, CardSkeleton, ErrorState, IconBadge, MoneyText, Progress, Row, Screen, Text, tokens } from '@driverhub/ui'
 import { meApi } from '../../lib/api'
 import { useAuth } from '../../stores/auth'
 import { greeting, money, formatHours, compactUzs, daysLeft } from '../../lib/format'
@@ -32,33 +32,35 @@ export function Home() {
           <WorkSessionBanner sessionId={data.workSessionId} />
 
           {/* Today */}
-          <Card glow="accent" style={{ marginTop: 12 }}>
+          <Card gradient="accent2" style={{ marginTop: 12 }}>
             <Row between>
-              <Text variant="body" tone="secondary">
+              <Text variant="body" style={{ color: 'rgba(255,255,255,0.75)' }}>
                 Bugungi sof foyda
               </Text>
               {renderDelta(data.today.incomeChangePct)}
             </Row>
             <div style={{ marginTop: 4 }}>
-              <MoneyText value={data.today.netProfit} size={32} tone={data.today.netProfit < 0 ? 'danger' : 'text'} sign />
+              <MoneyText value={data.today.netProfit} size={32} sign style={{ color: '#fff' }} />
             </div>
-            <Row between style={{ marginTop: 14 }}>
-              <Text variant="caption" tone="secondary">
-                Daromad
-              </Text>
-              <MoneyText value={data.today.income} size={15} tone="success" />
+            <Row style={{ marginTop: 14, gap: 8 }}>
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.14)', borderRadius: tokens.radius.md, padding: '8px 10px' }}>
+                <Text variant="caption" style={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                  Daromad
+                </Text>
+                <MoneyText value={data.today.income} size={14} style={{ color: '#fff' }} />
+              </div>
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.14)', borderRadius: tokens.radius.md, padding: '8px 10px' }}>
+                <Text variant="caption" style={{ color: 'rgba(255,255,255,0.7)', display: 'block' }}>
+                  Xarajat
+                </Text>
+                <MoneyText value={data.today.expenses} size={14} style={{ color: '#fff' }} />
+              </div>
             </Row>
-            <Row between>
-              <Text variant="caption" tone="secondary">
-                Xarajat
-              </Text>
-              <MoneyText value={data.today.expenses} size={15} tone="danger" />
-            </Row>
-            <Row between style={{ marginTop: 2 }}>
-              <Text variant="caption" tone="secondary">
+            <Row between style={{ marginTop: 10 }}>
+              <Text variant="caption" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 {formatHours(data.today.hours * 60 + data.today.minutes)} · {data.today.trips} ta haydov
               </Text>
-              <Text variant="caption" tone="secondary">
+              <Text variant="caption" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 {compactUzs(data.today.profitPerHour)}/soat
               </Text>
             </Row>
@@ -68,9 +70,9 @@ export function Home() {
                   marginTop: 12,
                   padding: '10px 12px',
                   borderRadius: tokens.radius.md,
-                  background: 'var(--dh-warning-bg)',
+                  background: 'rgba(0,0,0,0.2)',
                   fontSize: 12.5,
-                  color: 'var(--dh-warning)',
+                  color: '#fff',
                 }}
               >
                 ⚠️ Xarajatlar to‘liq kiritilmagan — foyda taxminiy.
@@ -80,9 +82,9 @@ export function Home() {
 
           {/* Quick actions */}
           <Row className="mt-3" style={{ marginTop: 14, gap: 8 }}>
-            <QuickLink to="/money/new-income" icon="➕" label="Daromad" />
-            <QuickLink to="/money/new-expense" icon="➖" label="Xarajat" />
-            <QuickLink to="/money" icon="📒" label="Jurnal" />
+            <QuickLink to="/money/new-income" icon="➕" gradient="accent" label="Daromad" />
+            <QuickLink to="/money/new-expense" icon="➖" gradient="danger" label="Xarajat" />
+            <QuickLink to="/money" icon="📒" gradient="info" label="Jurnal" />
           </Row>
 
           {/* Goal */}
@@ -224,7 +226,7 @@ function renderDelta(pct: number | null) {
   )
 }
 
-function QuickLink({ to, icon, label }: { to: string; icon: string; label: string }) {
+function QuickLink({ to, icon, label, gradient = 'accent2' }: { to: string; icon: string; label: string; gradient?: 'accent' | 'accent2' | 'danger' | 'info' | 'warning' }) {
   return (
     <Link
       to={to}
@@ -236,10 +238,14 @@ function QuickLink({ to, icon, label }: { to: string; icon: string; label: strin
         borderRadius: tokens.radius.md,
         padding: '12px 8px',
         textAlign: 'center',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 6,
       }}
     >
-      <div style={{ fontSize: 20 }}>{icon}</div>
-      <div style={{ fontSize: 12, color: 'var(--dh-text-secondary)', marginTop: 4, fontWeight: 600 }}>{label}</div>
+      <IconBadge emoji={icon} gradient={gradient} size={32} />
+      <div style={{ fontSize: 12, color: 'var(--dh-text-secondary)', fontWeight: 600 }}>{label}</div>
     </Link>
   )
 }
