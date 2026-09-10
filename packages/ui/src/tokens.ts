@@ -42,6 +42,18 @@ export const tokens = {
     card: '0 6px 24px rgba(0,0,0,0.28)',
     glow: '0 0 0 1px rgba(43,217,163,0.4), 0 8px 30px rgba(43,217,163,0.25)',
     glow2: '0 0 0 1px rgba(124,108,255,0.4), 0 8px 30px rgba(124,108,255,0.28)',
+    elevated: '0 16px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+  },
+  // Creative gradient surfaces for hero cards (balance, CTA, icon badges) —
+  // keep flat surfaces (tokens.color.surface) for regular content cards so
+  // gradients stay a deliberate accent, not the default look everywhere.
+  gradient: {
+    accent2: 'linear-gradient(150deg, #7C6CFF 0%, #5B4EE0 55%, #4636B8 100%)',
+    accent: 'linear-gradient(150deg, #26D9A0 0%, #159C77 60%, #0F8F6B 100%)',
+    warning: 'linear-gradient(150deg, #FFD36B 0%, #E0A020 60%, #C4841A 100%)',
+    danger: 'linear-gradient(145deg, #FF6B6B, #D83030)',
+    info: 'linear-gradient(145deg, #4DA3FF, #1D6FE0)',
+    surface: 'linear-gradient(160deg, #1B2438, #141A2B)',
   },
 } as const
 
