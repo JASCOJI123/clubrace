@@ -11,9 +11,14 @@
   --dh-text-muted: #6b7690;
   --dh-accent: #2bd9a3;
   --dh-accent-strong: #16c68c;
-  --dh-accent-2: #7c6cff;
-  --dh-accent-2-strong: #6a59f5;
+  --dh-accent-2: #2f6fed;
+  --dh-accent-2-strong: #1b54d6;
   --dh-info: #38bdf8;
   --dh-warning: #ffb020;
   --dh-danger: #ff5d6c;
+  --dh-success-bg: rgba(43, 217, 163, 0.12);
+  --dh-warning-bg: rgba(255, 176, 32, 0.14);
+  --dh-danger-bg: rgba(255, 93, 108, 0.12);
+  --dh-info-bg: rgba(56, 189, 248, 0.12);
+  --dh-accent2-bg: rgba(47, 111, 237, 0.16);
 }
