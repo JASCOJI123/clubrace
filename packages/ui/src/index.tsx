@@ -59,6 +59,8 @@ export function Card({
   padded = true,
   glow,
   gradient,
+  tilt = false,
+  pulse = false,
   style,
   ...rest
 }: {
@@ -68,11 +70,32 @@ export function Card({
   glow?: 'accent' | 'accent2' | null
   /** Renders a creative gradient surface (hero balance/CTA cards) instead of the flat default. */
   gradient?: keyof typeof tokens.gradient | null
+  /** Adds a subtle pointer-driven 3D tilt (perspective) — use sparingly, on the one hero card per screen. */
+  tilt?: boolean
+  /** Adds a slow breathing glow animation — pairs with `gradient="accent2"` hero cards. */
+  pulse?: boolean
   style?: React.CSSProperties
 } & Omit<React.HTMLAttributes<HTMLDivElement>, 'style'>) {
+  const ref = React.useRef<HTMLDivElement>(null)
+  const [rot, setRot] = React.useState({ x: 0, y: 0 })
+
+  function handleMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!tilt || !ref.current) return
+    const r = ref.current.getBoundingClientRect()
+    const px = (e.clientX - r.left) / r.width - 0.5
+    const py = (e.clientY - r.top) / r.height - 0.5
+    setRot({ x: py * -7, y: px * 7 })
+  }
+  function handleLeave() {
+    if (tilt) setRot({ x: 0, y: 0 })
+  }
+
   return (
     <div
-      className={cx('dh-card', className)}
+      ref={ref}
+      className={cx('dh-card', pulse && 'dh-glow-pulse', className)}
+      onPointerMove={handleMove}
+      onPointerLeave={handleLeave}
       style={{
         background: gradient ? tokens.gradient[gradient] : 'var(--dh-surface)',
         border: gradient ? 'none' : '1px solid var(--dh-border)',
@@ -85,6 +108,8 @@ export function Card({
               ? tokens.shadow.glow
               : tokens.shadow.glow2
             : tokens.shadow.card,
+        transform: tilt ? `perspective(800px) rotateX(${rot.x}deg) rotateY(${rot.y}deg)` : undefined,
+        transition: tilt ? 'transform .15s ease-out' : undefined,
         ...style,
       }}
       {...rest}
@@ -155,6 +180,27 @@ export function Row({
 
 export function Spacer({ size = 12 }: { size?: number }) {
   return <div style={{ height: size }} aria-hidden />
+}
+
+/**
+ * Staggered fade-up entrance for a screen's content. Wrap each top-level
+ * block on mount (Header, hero, quick actions, ...) with an increasing
+ * `delay` — a single orchestrated reveal on load, not per-card hover tricks.
+ */
+export function Reveal({
+  children,
+  delay = 0,
+  style,
+}: {
+  children: React.ReactNode
+  delay?: number
+  style?: React.CSSProperties
+}) {
+  return (
+    <div className="dh-rise" style={{ animationDelay: `${delay}ms`, ...style }}>
+      {children}
+    </div>
+  )
 }
 
 /* --------------------------------- buttons ------------------------------- */
@@ -391,7 +437,7 @@ export function Badge({
     warning: { fg: 'var(--dh-warning)', bg: 'var(--dh-warning-bg, rgba(255,176,32,0.14))' },
     danger: { fg: 'var(--dh-danger)', bg: 'var(--dh-danger-bg, rgba(255,93,108,0.12))' },
     info: { fg: 'var(--dh-info)', bg: 'var(--dh-info-bg, rgba(56,189,248,0.12))' },
-    accent: { fg: 'var(--dh-accent-2)', bg: 'var(--dh-accent2-bg, rgba(124,108,255,0.14))' },
+    accent: { fg: 'var(--dh-accent-2)', bg: 'var(--dh-accent2-bg, rgba(47,111,237,0.16))' },
   }
   const t = tones[tone]!
   return (
@@ -567,6 +613,17 @@ export function ensureKitStyles() {
     style.textContent = `
       @keyframes dh-spin { to { transform: rotate(360deg) } }
       @keyframes dh-shimmer { 0% { background-position: 200% 0 } 100% { background-position: -200% 0 } }
+      @keyframes dh-rise { from { opacity: 0; transform: translateY(14px) } to { opacity: 1; transform: translateY(0) } }
+      @keyframes dh-glow-pulse {
+        0%, 100% { box-shadow: 0 0 0 1px rgba(47,111,237,0.35), 0 8px 30px rgba(47,111,237,0.22), inset 0 1px 0 rgba(255,255,255,0.06); }
+        50% { box-shadow: 0 0 0 1px rgba(47,111,237,0.6), 0 10px 46px rgba(47,111,237,0.38), inset 0 1px 0 rgba(255,255,255,0.06); }
+      }
+      .dh-rise { opacity: 0; animation: dh-rise .55s cubic-bezier(.2,.8,.2,1) forwards; }
+      .dh-glow-pulse { animation: dh-glow-pulse 3.5s ease-in-out infinite; }
+      @media (prefers-reduced-motion: reduce) {
+        .dh-rise { animation: none; opacity: 1; }
+        .dh-glow-pulse { animation: none; }
+      }
     `
     document.head.appendChild(style)
   }
